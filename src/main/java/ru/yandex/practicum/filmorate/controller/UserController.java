@@ -7,7 +7,6 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
-import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,24 +26,7 @@ public class UserController {
     @PostMapping
     public User create(@Valid @RequestBody User user) {
 
-        if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
-            log.warn("Ошибка валидации пользователя: неверная форма почты");
-            throw new ValidationException("Неверный формат почты");
-        }
-
-        if (user.getLogin() == null || user.getLogin().isBlank() || user.getLogin().contains(" ")) {
-            log.warn("Ошибка валидации пользователя: неверная форма логина");
-            throw new ValidationException("Неверный формат логина");
-        }
-
-        if (user.getBirthday() == null || user.getBirthday().isAfter(LocalDate.now())) {
-            log.warn("Ошибка валидации пользователя: некорректная дата рождения");
-            throw new ValidationException("Дата рождения не может быть в будущем");
-        }
-
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-        }
+        setNameIfEmpty(user);
 
         user.setId(getNextId());
         users.put(user.getId(), user);
@@ -62,19 +44,17 @@ public class UserController {
             throw new ValidationException("Id должен быть указан");
         }
 
-        if (users.containsKey(newUser.getId())) {
-            if (newUser.getName() == null || newUser.getName().isBlank()) {
-                newUser.setName(newUser.getLogin());
-            }
-
-            users.put(newUser.getId(), newUser);
-
-            log.info("Обновлён пользователь: {}", newUser);
-            return newUser;
+        if (!users.containsKey(newUser.getId())) {
+            log.warn("Пользователь с id {} не найден", newUser.getId());
+            throw new NotFoundException("Пользователь с id = " + newUser.getId() + " не найден");
         }
 
-        log.warn("Пользователь с id {} не найден", newUser.getId());
-        throw new NotFoundException("Пользователь с id = " + newUser.getId() + " не найден");
+        setNameIfEmpty(newUser);
+
+        users.put(newUser.getId(), newUser);
+
+        log.info("Обновлён пользователь: {}", newUser);
+        return newUser;
     }
 
     private long getNextId() {
@@ -84,6 +64,12 @@ public class UserController {
                 .max()
                 .orElse(0);
         return ++currentMaxId;
+    }
+
+    private void setNameIfEmpty(User user) {
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+        }
     }
 
 }

@@ -19,10 +19,10 @@ public class Film {
     @NotBlank(message = "Название фильма не может быть пустым")
     private String name;
 
-
     @Size(max = 200, message = "Описание должно быть до 200 символов")
     private String description;
 
+    @NotNull(message = "Дата релиза должна быть указана")
     private LocalDate releaseDate;
 
     @NotNull(message = "Продолжительность должна быть указана")

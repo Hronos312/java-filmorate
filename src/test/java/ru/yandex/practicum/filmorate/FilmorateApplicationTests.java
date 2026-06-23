@@ -1,5 +1,10 @@
 package ru.yandex.practicum.filmorate;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import ru.yandex.practicum.filmorate.controller.FilmController;
@@ -9,14 +14,160 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 class FilmorateApplicationTests {
 
+	private final Validator validator;
+
+	FilmorateApplicationTests() {
+		ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+		validator = factory.getValidator();
+	}
+
 	@Test
 	void contextLoads() {
+	}
+
+	@Test
+	void shouldPassValidationWhenUserIsValid() {
+		User user = makeValidUser();
+
+		Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+		assertTrue(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenUserEmailIsInvalid() {
+		User user = makeValidUser();
+		user.setEmail("это-неправильный?эмейл@.");
+
+		Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenUserEmailIsBlank() {
+		User user = makeValidUser();
+		user.setEmail("");
+
+		Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenUserLoginIsBlank() {
+		User user = makeValidUser();
+		user.setLogin("");
+
+		Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenUserLoginContainsSpace() {
+		User user = makeValidUser();
+		user.setLogin("ivan login");
+
+		Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenUserBirthdayIsNull() {
+		User user = makeValidUser();
+		user.setBirthday(null);
+
+		Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenUserBirthdayIsInFuture() {
+		User user = makeValidUser();
+		user.setBirthday(LocalDate.now().plusDays(1));
+
+		Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldPassValidationWhenFilmIsValid() {
+		Film film = makeValidFilm();
+
+		Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+		assertTrue(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenFilmNameIsBlank() {
+		Film film = makeValidFilm();
+		film.setName("");
+
+		Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenFilmDescriptionIsTooLong() {
+		Film film = makeValidFilm();
+		film.setDescription("a".repeat(201));
+
+		Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldPassValidationWhenFilmDescriptionLengthIs200() {
+		Film film = makeValidFilm();
+		film.setDescription("a".repeat(200));
+
+		Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+		assertTrue(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenFilmDurationIsNegative() {
+		Film film = makeValidFilm();
+		film.setDuration(-1);
+
+		Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenFilmDurationIsNull() {
+		Film film = makeValidFilm();
+		film.setDuration(null);
+
+		Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+		assertFalse(violations.isEmpty());
+	}
+
+	@Test
+	void shouldNotPassValidationWhenFilmReleaseDateIsNull() {
+		Film film = makeValidFilm();
+		film.setReleaseDate(null);
+
+		Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+		assertFalse(violations.isEmpty());
 	}
 
 	@Test
@@ -31,15 +182,6 @@ class FilmorateApplicationTests {
 	}
 
 	@Test
-	void shouldThrowExceptionWhenFilmNameIsBlank() {
-		FilmController filmController = new FilmController();
-		Film film = makeValidFilm();
-		film.setName("");
-
-		assertThrows(ValidationException.class, () -> filmController.create(film));
-	}
-
-	@Test
 	void shouldCreateFilmWhenDescriptionLengthIs200() {
 		FilmController filmController = new FilmController();
 		Film film = makeValidFilm();
@@ -48,15 +190,6 @@ class FilmorateApplicationTests {
 		Film createdFilm = filmController.create(film);
 
 		assertNotNull(createdFilm.getId());
-	}
-
-	@Test
-	void shouldThrowExceptionWhenFilmDescriptionLengthMoreThan200() {
-		FilmController filmController = new FilmController();
-		Film film = makeValidFilm();
-		film.setDescription("a".repeat(201));
-
-		assertThrows(ValidationException.class, () -> filmController.create(film));
 	}
 
 	@Test
@@ -80,24 +213,6 @@ class FilmorateApplicationTests {
 	}
 
 	@Test
-	void shouldThrowExceptionWhenFilmDurationIsZero() {
-		FilmController filmController = new FilmController();
-		Film film = makeValidFilm();
-		film.setDuration(0);
-
-		assertThrows(ValidationException.class, () -> filmController.create(film));
-	}
-
-	@Test
-	void shouldThrowExceptionWhenFilmDurationIsNegative() {
-		FilmController filmController = new FilmController();
-		Film film = makeValidFilm();
-		film.setDuration(-1);
-
-		assertThrows(ValidationException.class, () -> filmController.create(film));
-	}
-
-	@Test
 	void shouldCreateUserWithValidData() {
 		UserController userController = new UserController();
 		User user = makeValidUser();
@@ -109,42 +224,6 @@ class FilmorateApplicationTests {
 	}
 
 	@Test
-	void shouldThrowExceptionWhenUserEmailIsBlank() {
-		UserController userController = new UserController();
-		User user = makeValidUser();
-		user.setEmail("");
-
-		assertThrows(ValidationException.class, () -> userController.create(user));
-	}
-
-	@Test
-	void shouldThrowExceptionWhenUserEmailDoesNotContainAt() {
-		UserController userController = new UserController();
-		User user = makeValidUser();
-		user.setEmail("ivanmail.ru");
-
-		assertThrows(ValidationException.class, () -> userController.create(user));
-	}
-
-	@Test
-	void shouldThrowExceptionWhenUserLoginIsBlank() {
-		UserController userController = new UserController();
-		User user = makeValidUser();
-		user.setLogin("");
-
-		assertThrows(ValidationException.class, () -> userController.create(user));
-	}
-
-	@Test
-	void shouldThrowExceptionWhenUserLoginContainsSpace() {
-		UserController userController = new UserController();
-		User user = makeValidUser();
-		user.setLogin("ivan login");
-
-		assertThrows(ValidationException.class, () -> userController.create(user));
-	}
-
-	@Test
 	void shouldSetLoginAsNameWhenUserNameIsBlank() {
 		UserController userController = new UserController();
 		User user = makeValidUser();
@@ -153,15 +232,6 @@ class FilmorateApplicationTests {
 		User createdUser = userController.create(user);
 
 		assertEquals(user.getLogin(), createdUser.getName());
-	}
-
-	@Test
-	void shouldThrowExceptionWhenUserBirthdayIsInFuture() {
-		UserController userController = new UserController();
-		User user = makeValidUser();
-		user.setBirthday(LocalDate.now().plusDays(1));
-
-		assertThrows(ValidationException.class, () -> userController.create(user));
 	}
 
 	@Test
