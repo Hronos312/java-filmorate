@@ -12,6 +12,10 @@ import ru.yandex.practicum.filmorate.controller.UserController;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -172,7 +176,7 @@ class FilmorateApplicationTests {
 
 	@Test
 	void shouldCreateFilmWithValidData() {
-		FilmController filmController = new FilmController();
+		FilmController filmController = makeFilmController();
 		Film film = makeValidFilm();
 
 		Film createdFilm = filmController.create(film);
@@ -183,7 +187,7 @@ class FilmorateApplicationTests {
 
 	@Test
 	void shouldCreateFilmWhenDescriptionLengthIs200() {
-		FilmController filmController = new FilmController();
+		FilmController filmController = makeFilmController();
 		Film film = makeValidFilm();
 		film.setDescription("a".repeat(200));
 
@@ -194,7 +198,7 @@ class FilmorateApplicationTests {
 
 	@Test
 	void shouldCreateFilmWhenReleaseDateIsBoundaryDate() {
-		FilmController filmController = new FilmController();
+		FilmController filmController = makeFilmController();
 		Film film = makeValidFilm();
 		film.setReleaseDate(LocalDate.of(1895, 12, 28));
 
@@ -205,7 +209,7 @@ class FilmorateApplicationTests {
 
 	@Test
 	void shouldThrowExceptionWhenFilmReleaseDateBeforeBoundaryDate() {
-		FilmController filmController = new FilmController();
+		FilmController filmController = makeFilmController();
 		Film film = makeValidFilm();
 		film.setReleaseDate(LocalDate.of(1895, 12, 27));
 
@@ -214,7 +218,7 @@ class FilmorateApplicationTests {
 
 	@Test
 	void shouldCreateUserWithValidData() {
-		UserController userController = new UserController();
+		UserController userController = makeUserController();
 		User user = makeValidUser();
 
 		User createdUser = userController.create(user);
@@ -225,7 +229,7 @@ class FilmorateApplicationTests {
 
 	@Test
 	void shouldSetLoginAsNameWhenUserNameIsBlank() {
-		UserController userController = new UserController();
+		UserController userController = makeUserController();
 		User user = makeValidUser();
 		user.setName("");
 
@@ -236,13 +240,30 @@ class FilmorateApplicationTests {
 
 	@Test
 	void shouldCreateUserWhenBirthdayIsToday() {
-		UserController userController = new UserController();
+		UserController userController = makeUserController();
 		User user = makeValidUser();
 		user.setBirthday(LocalDate.now());
 
 		User createdUser = userController.create(user);
 
 		assertNotNull(createdUser.getId());
+	}
+
+	private FilmController makeFilmController() {
+		return new FilmController(
+				new FilmService(
+						new InMemoryFilmStorage(),
+						new InMemoryUserStorage()
+				)
+		);
+	}
+
+	private UserController makeUserController() {
+		return new UserController(
+				new UserService(
+						new InMemoryUserStorage()
+				)
+		);
 	}
 
 	private Film makeValidFilm() {
