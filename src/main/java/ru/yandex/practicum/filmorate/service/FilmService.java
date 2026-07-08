@@ -73,6 +73,10 @@ public class FilmService {
         if (count == null) {
             count = 10;
         }
+        if (count <= 0) {
+            log.warn("Ошибка валидации: некорректный параметр count {}", count);
+            throw new ValidationException("Параметр count должен быть положительным");
+        }
 
         return filmStorage.findAll()
                 .stream()

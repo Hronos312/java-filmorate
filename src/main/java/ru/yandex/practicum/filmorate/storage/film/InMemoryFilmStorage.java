@@ -13,6 +13,7 @@ import java.util.Map;
 public class InMemoryFilmStorage implements FilmStorage {
 
     private final Map<Long, Film> films = new HashMap<>();
+    private long nextId = 1;
 
     @Override
     public Collection<Film> findAll() {
@@ -32,7 +33,7 @@ public class InMemoryFilmStorage implements FilmStorage {
 
     @Override
     public Film create(Film film) {
-        film.setId(getNextId());
+        film.setId(nextId++);
         films.put(film.getId(), film);
         return film;
     }
@@ -58,16 +59,6 @@ public class InMemoryFilmStorage implements FilmStorage {
         }
 
         films.remove(id);
-    }
-
-    private long getNextId() {
-        long currentMaxId = films.keySet()
-                .stream()
-                .mapToLong(id -> id)
-                .max()
-                .orElse(0);
-
-        return ++currentMaxId;
     }
 
 }

@@ -13,6 +13,7 @@ import java.util.Map;
 public class InMemoryUserStorage implements UserStorage {
 
     private final Map<Long, User> users = new HashMap<>();
+    private long nextId = 1;
 
     @Override
     public Collection<User> findAll() {
@@ -32,7 +33,7 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public User create(User user) {
-        user.setId(getNextId());
+        user.setId(nextId++);
         users.put(user.getId(), user);
 
         return user;
@@ -61,14 +62,5 @@ public class InMemoryUserStorage implements UserStorage {
         }
 
         users.remove(id);
-    }
-
-    private long getNextId() {
-        long currentMaxId = users.keySet()
-                .stream()
-                .mapToLong(id -> id)
-                .max()
-                .orElse(0);
-        return ++currentMaxId;
     }
 }
