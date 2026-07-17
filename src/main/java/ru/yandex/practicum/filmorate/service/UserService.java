@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -49,8 +50,8 @@ public class UserService {
         User user = userStorage.findById(userId);
         User friend = userStorage.findById(friendId);
 
-        user.getFriends().add(friendId);
-        friend.getFriends().add(userId);
+        user.getFriends().put(friendId, FriendshipStatus.CONFIRMED);
+        friend.getFriends().put(userId, FriendshipStatus.CONFIRMED);
 
         log.info("Пользователь {} добавил в друзья пользователя {}", userId, friendId);
     }
@@ -69,6 +70,7 @@ public class UserService {
         User user = userStorage.findById(userId);
 
         return user.getFriends()
+                .keySet()
                 .stream()
                 .map(userStorage::findById)
                 .toList();
@@ -79,8 +81,9 @@ public class UserService {
         User otherUser = userStorage.findById(otherId);
 
         return user.getFriends()
+                .keySet()
                 .stream()
-                .filter(otherUser.getFriends()::contains)
+                .filter(otherUser.getFriends().keySet()::contains)
                 .map(userStorage::findById)
                 .toList();
     }
