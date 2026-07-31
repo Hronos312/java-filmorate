@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.storage.user;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.util.Collection;
@@ -62,5 +63,57 @@ public class InMemoryUserStorage implements UserStorage {
         }
 
         users.remove(id);
+    }
+
+    @Override
+    public void addFriend(Long userId, Long friendId) {
+        User user = findById(userId);
+        User friend = findById(friendId);
+
+        if (friend.getFriends().containsKey(userId)) {
+            user.getFriends().put(friendId, FriendshipStatus.CONFIRMED);
+
+            friend.getFriends().put(userId, FriendshipStatus.CONFIRMED);
+
+            return;
+        }
+
+        user.getFriends().put(friendId, FriendshipStatus.UNCONFIRMED);
+    }
+
+    @Override
+    public void removeFriend(Long userId, Long friendId) {
+        User user = findById(userId);
+        User friend = findById(friendId);
+
+        user.getFriends().remove(friendId);
+
+        if (friend.getFriends().containsKey(userId)) {
+            friend.getFriends().put(userId, FriendshipStatus.UNCONFIRMED);
+        }
+    }
+
+    @Override
+    public Collection<User> getFriends(Long userId) {
+        User user = findById(userId);
+
+        return user.getFriends()
+                .keySet()
+                .stream()
+                .map(this::findById)
+                .toList();
+    }
+
+    @Override
+    public Collection<User> getCommonFriends(Long userId, Long otherId) {
+        User user = findById(userId);
+        User otherUser = findById(otherId);
+
+        return user.getFriends()
+                .keySet()
+                .stream()
+                .filter(otherUser.getFriends().keySet()::contains)
+                .map(this::findById)
+                .toList();
     }
 }

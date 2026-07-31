@@ -1,7 +1,9 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
@@ -14,7 +16,7 @@ public class UserService {
 
     private final UserStorage userStorage;
 
-    public UserService(UserStorage userStorage) {
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage) {
         this.userStorage = userStorage;
     }
 
@@ -47,45 +49,39 @@ public class UserService {
     }
 
     public void addFriend(Long userId, Long friendId) {
-        User user = userStorage.findById(userId);
-        User friend = userStorage.findById(friendId);
+        if (userId.equals(friendId)) {
+            throw new ValidationException("Пользователь не может добавить себя в друзья");
+        }
 
-        user.getFriends().put(friendId, FriendshipStatus.CONFIRMED);
-        friend.getFriends().put(userId, FriendshipStatus.CONFIRMED);
+        userStorage.findById(userId);
+        userStorage.findById(friendId);
 
-        log.info("Пользователь {} добавил в друзья пользователя {}", userId, friendId);
+        userStorage.addFriend(userId, friendId);
+
+        log.info("Пользователь {} добавил пользователя {} в друзья", userId, friendId);
     }
 
     public void removeFriend(Long userId, Long friendId) {
-        User user = userStorage.findById(userId);
-        User friend = userStorage.findById(friendId);
+        userStorage.findById(userId);
+        userStorage.findById(friendId);
 
-        user.getFriends().remove(friendId);
-        friend.getFriends().remove(userId);
+        userStorage.removeFriend(userId, friendId);
 
-        log.info("Пользователь {} удалил из друзей пользователя {}", userId, friendId);
+        log.info("Пользователь {} удалил пользователя {} из друзей", userId, friendId);
     }
 
     public Collection<User> getFriends(Long userId) {
-        User user = userStorage.findById(userId);
+        userStorage.findById(userId);
 
-        return user.getFriends()
-                .keySet()
-                .stream()
-                .map(userStorage::findById)
-                .toList();
+        return userStorage.getFriends(userId);
     }
 
-    public Collection<User> getCommonFriends(Long userId, Long otherId) {
-        User user = userStorage.findById(userId);
-        User otherUser = userStorage.findById(otherId);
 
-        return user.getFriends()
-                .keySet()
-                .stream()
-                .filter(otherUser.getFriends().keySet()::contains)
-                .map(userStorage::findById)
-                .toList();
+    public Collection<User> getCommonFriends(Long userId, Long otherId) {
+        userStorage.findById(userId);
+        userStorage.findById(otherId);
+
+        return userStorage.getCommonFriends(userId, otherId);
     }
 
     private void setNameIfEmpty(User user) {
