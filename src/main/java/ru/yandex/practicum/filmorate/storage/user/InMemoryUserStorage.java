@@ -70,6 +70,10 @@ public class InMemoryUserStorage implements UserStorage {
         User user = findById(userId);
         User friend = findById(friendId);
 
+        if (user.getFriends().containsKey(friendId)) {
+            return;
+        }
+
         if (friend.getFriends().containsKey(userId)) {
             user.getFriends().put(friendId, FriendshipStatus.CONFIRMED);
 

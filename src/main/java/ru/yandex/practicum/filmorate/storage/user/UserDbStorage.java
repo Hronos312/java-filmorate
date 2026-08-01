@@ -14,8 +14,10 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Repository("userDbStorage")
 public class UserDbStorage implements UserStorage {
@@ -51,16 +53,6 @@ public class UserDbStorage implements UserStorage {
             WHERE user_id = ?
             """;
 
-    private static final String FIND_FRIENDS_QUERY = """
-            SELECT f.friend_id,
-                   fs.name AS status_name
-            FROM friendships AS f
-            JOIN friendship_statuses AS fs
-              ON fs.status_id = f.status_id
-            WHERE f.user_id = ?
-            ORDER BY f.friend_id
-            """;
-
     private static final String FIND_STATUS_ID_QUERY = """
             SELECT status_id
             FROM friendship_statuses
@@ -75,8 +67,7 @@ public class UserDbStorage implements UserStorage {
             """;
 
     private static final String SAVE_FRIENDSHIP_QUERY = """
-            MERGE INTO friendships (user_id, friend_id, status_id)
-            KEY (user_id, friend_id)
+            INSERT INTO friendships (user_id, friend_id, status_id)
             VALUES (?, ?, ?)
             """;
 
@@ -122,6 +113,17 @@ public class UserDbStorage implements UserStorage {
             ORDER BY u.user_id
             """;
 
+    private static final String FIND_FRIENDS_FOR_USERS_QUERY = """
+            SELECT f.user_id,
+                   f.friend_id,
+                   fs.name AS status_name
+            FROM friendships AS f
+            JOIN friendship_statuses AS fs
+              ON fs.status_id = f.status_id
+            WHERE f.user_id IN (%s)
+            ORDER BY f.user_id, f.friend_id
+            """;
+
     private final JdbcTemplate jdbc;
 
     public UserDbStorage(JdbcTemplate jdbc) {
@@ -131,7 +133,7 @@ public class UserDbStorage implements UserStorage {
     @Override
     public Collection<User> findAll() {
         List<User> users = jdbc.query(FIND_ALL_QUERY, this::mapRow);
-        users.forEach(this::loadFriends);
+        loadFriends(users);
 
         return users;
     }
@@ -145,7 +147,7 @@ public class UserDbStorage implements UserStorage {
                 .orElseThrow(() ->
                         new NotFoundException("Пользователь с id = " + id + " не найден"));
 
-        loadFriends(user);
+        loadFriends(List.of(user));
 
         return user;
     }
@@ -227,13 +229,13 @@ public class UserDbStorage implements UserStorage {
     @Override
     @Transactional
     public void addFriend(Long userId, Long friendId) {
-        boolean reverseFriendshipExists =
-                friendshipExists(friendId, userId);
+        if (friendshipExists(userId, friendId)) {
+            return;
+        }
 
-        FriendshipStatus newStatus =
-                reverseFriendshipExists
-                        ? FriendshipStatus.CONFIRMED
-                        : FriendshipStatus.UNCONFIRMED;
+        boolean reverseFriendshipExists = friendshipExists(friendId, userId);
+
+        FriendshipStatus newStatus = reverseFriendshipExists ? FriendshipStatus.CONFIRMED : FriendshipStatus.UNCONFIRMED;
 
         int newStatusId = findStatusId(newStatus);
 
@@ -245,8 +247,7 @@ public class UserDbStorage implements UserStorage {
         );
 
         if (reverseFriendshipExists) {
-            int confirmedStatusId =
-                    findStatusId(FriendshipStatus.CONFIRMED);
+            int confirmedStatusId = findStatusId(FriendshipStatus.CONFIRMED);
 
             jdbc.update(
                     UPDATE_FRIENDSHIP_STATUS_QUERY,
@@ -267,8 +268,7 @@ public class UserDbStorage implements UserStorage {
         );
 
         if (friendshipExists(friendId, userId)) {
-            int unconfirmedStatusId =
-                    findStatusId(FriendshipStatus.UNCONFIRMED);
+            int unconfirmedStatusId = findStatusId(FriendshipStatus.UNCONFIRMED);
 
             jdbc.update(
                     UPDATE_FRIENDSHIP_STATUS_QUERY,
@@ -287,16 +287,13 @@ public class UserDbStorage implements UserStorage {
                 userId
         );
 
-        friends.forEach(this::loadFriends);
+        loadFriends(friends);
 
         return friends;
     }
 
     @Override
-    public Collection<User> getCommonFriends(
-            Long userId,
-            Long otherId
-    ) {
+    public Collection<User> getCommonFriends(Long userId, Long otherId) {
         List<User> commonFriends = jdbc.query(
                 FIND_COMMON_FRIENDS_QUERY,
                 this::mapRow,
@@ -304,7 +301,7 @@ public class UserDbStorage implements UserStorage {
                 otherId
         );
 
-        commonFriends.forEach(this::loadFriends);
+        loadFriends(commonFriends);
 
         return commonFriends;
     }
@@ -336,25 +333,39 @@ public class UserDbStorage implements UserStorage {
         return statusId;
     }
 
-    private void loadFriends(User user) {
-        List<Map.Entry<Long, FriendshipStatus>> friendships = jdbc.query(
-                FIND_FRIENDS_QUERY,
-                (resultSet, rowNum) -> Map.entry(
-                        resultSet.getLong("friend_id"),
-                        FriendshipStatus.valueOf(
-                                resultSet.getString("status_name")
-                        )
-                ),
-                user.getId()
-        );
-
-        user.getFriends().clear();
-
-        for (Map.Entry<Long, FriendshipStatus> friendship : friendships) {
-            user.getFriends().put(
-                    friendship.getKey(),
-                    friendship.getValue()
-            );
+    private void loadFriends(Collection<User> users) {
+        if (users.isEmpty()) {
+            return;
         }
+
+        Map<Long, User> usersById = users.stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+
+        users.forEach(user -> user.getFriends().clear());
+
+        String placeholders = String.join(", ", Collections.nCopies(usersById.size(), "?"));
+
+        String query = FIND_FRIENDS_FOR_USERS_QUERY.formatted(placeholders);
+
+        Object[] userIds = usersById.keySet().toArray();
+
+        jdbc.query(
+                query,
+                resultSet -> {
+                    while (resultSet.next()) {
+                        Long userId = resultSet.getLong("user_id");
+
+                        User user = usersById.get(userId);
+
+                        if (user != null) {
+                            user.getFriends().put(resultSet.getLong("friend_id"),
+                                    FriendshipStatus.valueOf(resultSet.getString("status_name"))
+                            );
+                        }
+                    }
+                    return null;
+                },
+                userIds
+        );
     }
 }
