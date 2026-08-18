@@ -5,10 +5,8 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class InMemoryFilmStorage implements FilmStorage {
@@ -81,4 +79,47 @@ public class InMemoryFilmStorage implements FilmStorage {
                 .toList();
     }
 
+    @Override
+    public Collection<Film> getRecommendations(Long userId) {
+        Map<Long, Set<Long>> userLikesMap = new HashMap<>();
+        for (Film film : films.values()) {
+            for (Long uId : film.getLikes()) {
+                userLikesMap.computeIfAbsent(uId, k -> new HashSet<>()).add(film.getId());
+            }
+        }
+
+        Set<Long> targetLikes = userLikesMap.getOrDefault(userId, Collections.emptySet());
+
+        Long mostSimilarUserId = null;
+        long maxIntersection = 0;
+
+        for (Map.Entry<Long, Set<Long>> entry : userLikesMap.entrySet()) {
+            Long otherUserId = entry.getKey();
+            if (otherUserId.equals(userId)) {
+                continue;
+            }
+
+            Set<Long> otherLikes = entry.getValue();
+            long intersectionSize = otherLikes.stream()
+                    .filter(targetLikes::contains)
+                    .count();
+
+            if (intersectionSize > maxIntersection) {
+                maxIntersection = intersectionSize;
+                mostSimilarUserId = otherUserId;
+            }
+        }
+
+        if (mostSimilarUserId == null || maxIntersection == 0) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> recommendedFilmIds = userLikesMap.get(mostSimilarUserId).stream()
+                .filter(filmId -> !targetLikes.contains(filmId))
+                .collect(Collectors.toSet());
+
+        return films.values().stream()
+                .filter(film -> recommendedFilmIds.contains(film.getId()))
+                .toList();
+    }
 }
