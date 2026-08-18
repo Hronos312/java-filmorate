@@ -10,6 +10,7 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
+import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
 
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -148,10 +149,37 @@ public class FilmDbStorage implements FilmStorage {
             ORDER BY film_id, user_id
             """;
 
-    private final JdbcTemplate jdbc;
+    private static final String FIND_RECOMMENDATION_FILMS_BY_USER = """
+            SELECT f.*, m.name AS mpa_name
+            FROM films f
+            JOIN mpa AS m ON f.mpa_id = m.mpa_id
+            WHERE f.film_id IN (
+                SELECT fl_similar.film_id
+                FROM film_likes AS fl_similar
+                WHERE fl_similar.user_id = (
+                    SELECT fl2.user_id
+                    FROM film_likes AS fl1
+                    JOIN film_likes AS fl2 ON fl1.film_id = fl2.film_id AND fl1.user_id <> fl2.user_id
+                    WHERE fl1.user_id = ?
+                    GROUP BY fl2.user_id
+                    ORDER BY COUNT(fl2.film_id) DESC
+                    LIMIT 1
+                )
+                AND fl_similar.film_id NOT IN (
+                    SELECT fl_target.film_id
+                    FROM film_likes AS fl_target
+                    WHERE fl_target.user_id = ?
+                )
+            );
+        """;
 
-    public FilmDbStorage(JdbcTemplate jdbc) {
+    private final JdbcTemplate jdbc;
+    private final GenreStorage genreStorage;
+
+    public FilmDbStorage(JdbcTemplate jdbc,
+                         GenreStorage genreStorage) {
         this.jdbc = jdbc;
+        this.genreStorage = genreStorage;
     }
 
     @Override
@@ -293,6 +321,15 @@ public class FilmDbStorage implements FilmStorage {
         loadRelations(films);
 
         return films;
+    }
+
+    @Override
+    public Collection<Film> getRecommendations(Long userId) {
+        List<Film> recommendations = jdbc.query(FIND_RECOMMENDATION_FILMS_BY_USER, this::mapRow, userId, userId);
+
+        genreStorage.loadGenresForFilms(recommendations);
+
+        return recommendations;
     }
 
     private void loadRelations(Collection<Film> films) {
