@@ -10,7 +10,6 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
-import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
 
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -174,12 +173,9 @@ public class FilmDbStorage implements FilmStorage {
         """;
 
     private final JdbcTemplate jdbc;
-    private final GenreStorage genreStorage;
 
-    public FilmDbStorage(JdbcTemplate jdbc,
-                         GenreStorage genreStorage) {
+    public FilmDbStorage(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
-        this.genreStorage = genreStorage;
     }
 
     @Override
@@ -327,7 +323,7 @@ public class FilmDbStorage implements FilmStorage {
     public Collection<Film> getRecommendations(Long userId) {
         List<Film> recommendations = jdbc.query(FIND_RECOMMENDATION_FILMS_BY_USER, this::mapRow, userId, userId);
 
-        genreStorage.loadGenresForFilms(recommendations);
+        loadRelations(recommendations);
 
         return recommendations;
     }
