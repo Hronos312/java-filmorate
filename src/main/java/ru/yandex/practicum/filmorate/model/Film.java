@@ -18,6 +18,7 @@ public class Film {
     private final Set<Long> likes = new HashSet<>();
     private Set<Genre> genres = new LinkedHashSet<>();
     private Mpa mpa;
+    private Set<Director> directors = new LinkedHashSet<>();
 
     @NotBlank(message = "Название фильма не может быть пустым")
     private String name;
