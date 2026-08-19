@@ -11,7 +11,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Repository
-public class MpaDbStorage implements MpaStorage {
+public class   MpaDbStorage implements MpaStorage {
 
     private static final String FIND_ALL_QUERY = """
             SELECT mpa_id, name

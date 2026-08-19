@@ -73,9 +73,12 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public Collection<Film> findPopular(Integer count) {
+    public Collection<Film> findPopular(Integer count, Long genreId, Integer year) {
         return films.values()
                 .stream()
+                .filter(film -> genreId == null || film.getGenres().stream()
+                        .anyMatch(genre -> genreId.equals(genre.getId())))
+                .filter(film -> year == null || year.equals(film.getReleaseDate().getYear()))
                 .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
                 .limit(count)
                 .toList();

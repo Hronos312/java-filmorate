@@ -10,7 +10,11 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.model.*;
+import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.FriendshipStatus;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
+import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.genre.GenreDbStorage;
@@ -551,7 +555,7 @@ class FilmorateApplicationTests {
 
 		filmStorage.addLike(secondFilm.getId(), firstUser.getId());
 
-		Collection<Film> popularFilms = filmStorage.findPopular(2);
+		Collection<Film> popularFilms = filmStorage.findPopular(2, null, null);
 
 		assertThat(popularFilms)
 				.extracting(Film::getId)
