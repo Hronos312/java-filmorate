@@ -57,4 +57,9 @@ public class UserController {
         return userService.getCommonFriends(id, otherId);
     }
 
+    @GetMapping("/{id}/feed")
+    public Collection<ru.yandex.practicum.filmorate.model.Event> getFeed(@PathVariable Long id) {
+        return userService.getFeed(id);
+    }
+
 }

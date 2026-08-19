@@ -11,6 +11,8 @@ import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.*;
+import ru.yandex.practicum.filmorate.storage.event.EventDbStorage;
+import ru.yandex.practicum.filmorate.storage.event.EventStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.genre.GenreDbStorage;
@@ -20,6 +22,7 @@ import ru.yandex.practicum.filmorate.storage.mpa.MpaStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -30,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
-@Import({UserDbStorage.class, FilmDbStorage.class, GenreDbStorage.class, MpaDbStorage.class})
+@Import({UserDbStorage.class, FilmDbStorage.class, GenreDbStorage.class, MpaDbStorage.class, EventDbStorage.class})
 class FilmorateApplicationTests {
 
 	private static final Validator VALIDATOR =
@@ -40,18 +43,21 @@ class FilmorateApplicationTests {
 	private final FilmStorage filmStorage;
 	private final GenreStorage genreStorage;
 	private final MpaStorage mpaStorage;
+	private final EventStorage eventStorage;
 
 	@Autowired
 	FilmorateApplicationTests(
 			@Qualifier("userDbStorage") UserStorage userStorage,
 			@Qualifier("filmDbStorage") FilmStorage filmStorage,
 			GenreStorage genreStorage,
-			MpaStorage mpaStorage
+			MpaStorage mpaStorage,
+			@Qualifier("eventDbStorage") EventStorage eventStorage
 	) {
 		this.userStorage = userStorage;
 		this.filmStorage = filmStorage;
 		this.genreStorage = genreStorage;
 		this.mpaStorage = mpaStorage;
+		this.eventStorage = eventStorage;
 	}
 
 	@Test
@@ -748,6 +754,63 @@ class FilmorateApplicationTests {
 						FriendshipStatus.UNCONFIRMED
 				);
 	}
+
+	@Test
+	void testEventFeed() {
+		User user = makeValidUser();
+		User createdUser = userStorage.create(user);
+		Long userId = createdUser.getId();
+
+		Film film = makeValidFilm();
+		Film createdFilm = filmStorage.create(film);
+		Long filmId = createdFilm.getId();
+
+		Collection<Event> initialFeed = eventStorage.getFeedByUserId(userId);
+		assertThat(initialFeed).isEmpty();
+
+		long timestamp1 = Instant.now().toEpochMilli();
+		Event friendEvent = Event.builder()
+			.timestamp(timestamp1)
+			.userId(userId)
+			.eventType(EventType.FRIEND)
+			.operation(Operation.ADD)
+			.entityId(99L)
+			.build();
+
+		try { Thread.sleep(10); } catch (InterruptedException ignored) {}
+
+		long timestamp2 = Instant.now().toEpochMilli();
+		Event likeEvent = Event.builder()
+			.timestamp(timestamp2)
+			.userId(userId)
+			.eventType(EventType.LIKE)
+			.operation(Operation.ADD)
+			.entityId(filmId)
+			.build();
+
+		eventStorage.addEvent(friendEvent);
+		eventStorage.addEvent(likeEvent);
+
+		Collection<Event> userFeed = eventStorage.getFeedByUserId(userId);
+
+		assertThat(userFeed)
+			.isNotNull()
+			.hasSize(2);
+
+		Event firstEventInFeed = userFeed.stream().findFirst().orElseThrow();
+		assertThat(firstEventInFeed.getEventType()).isEqualTo(EventType.FRIEND);
+		assertThat(firstEventInFeed.getOperation()).isEqualTo(Operation.ADD);
+		assertThat(firstEventInFeed.getUserId()).isEqualTo(userId);
+		assertThat(firstEventInFeed.getEntityId()).isEqualTo(99L);
+		assertThat(firstEventInFeed.getEventId()).isPositive();
+
+		Event secondEventInFeed = userFeed.stream().skip(1).findFirst().orElseThrow();
+		assertThat(secondEventInFeed.getEventType()).isEqualTo(EventType.LIKE);
+		assertThat(secondEventInFeed.getOperation()).isEqualTo(Operation.ADD);
+		assertThat(secondEventInFeed.getUserId()).isEqualTo(userId);
+		assertThat(secondEventInFeed.getEntityId()).isEqualTo(filmId);
+	}
+
 
 	private User makeValidUser() {
 		User user = new User();
