@@ -22,5 +22,7 @@ public interface FilmStorage {
 
     Collection<Film> findPopular(Integer count);
 
+    Collection<Film> findByDirector(Long directorId, String sortBy);
+
     Collection<Film> getRecommendations(Long userId);
 }
