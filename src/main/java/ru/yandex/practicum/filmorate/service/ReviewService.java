@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Review;
@@ -18,9 +19,9 @@ public class ReviewService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
 
-    public ReviewService(ReviewStorage reviewStorage,
-                         FilmStorage filmStorage,
-                         UserStorage userStorage) {
+    public ReviewService(@Qualifier("reviewDbStorage") ReviewStorage reviewStorage,
+                         @Qualifier("filmDbStorage") FilmStorage filmStorage,
+                         @Qualifier("userDbStorage") UserStorage userStorage) { // <-- Добавь @Qualifier("userDbStorage")
         this.reviewStorage = reviewStorage;
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
@@ -91,7 +92,6 @@ public class ReviewService {
         reviewStorage.removeLike(reviewId, userId);
     }
 
-    // === МЕТОДЫ ДЛЯ ДИЗЛАЙКОВ ===
     public void addDislike(Long reviewId, Long userId) {
         if (reviewId == null || userId == null) {
             throw new ValidationException("ID отзыва и пользователя не могут быть null");
