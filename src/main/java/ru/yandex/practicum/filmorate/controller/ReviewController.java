@@ -56,7 +56,6 @@ public class ReviewController {
         reviewService.removeLike(id, userId);
     }
 
-    // === ЭНДПОИНТЫ ДЛЯ ДИЗЛАЙКОВ ===
     @PutMapping("/{id}/dislike/{userId}")
     public void addDislike(@PathVariable Long id, @PathVariable Long userId) {
         reviewService.addDislike(id, userId);
