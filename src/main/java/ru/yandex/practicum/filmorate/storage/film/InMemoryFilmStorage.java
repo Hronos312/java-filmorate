@@ -98,7 +98,7 @@ public class InMemoryFilmStorage implements FilmStorage {
                 .sorted(comparator)
                 .toList();
     }
-    
+
     @Override
     public Collection<Film> getRecommendations(Long userId) {
         Map<Long, Set<Long>> userLikesMap = new HashMap<>();
