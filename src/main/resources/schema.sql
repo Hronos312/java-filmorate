@@ -115,3 +115,12 @@ CREATE INDEX IF NOT EXISTS idx_reviews_film_id
 
 CREATE INDEX IF NOT EXISTS idx_reviews_user_id
     ON reviews (user_id);
+
+CREATE TABLE IF NOT EXISTS review_likes (
+    review_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    is_like BOOLEAN NOT NULL,
+    CONSTRAINT pk_review_likes PRIMARY KEY (review_id, user_id),
+    CONSTRAINT fk_review_likes_review FOREIGN KEY (review_id) REFERENCES reviews (review_id) ON DELETE CASCADE,
+    CONSTRAINT fk_review_likes_user FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+    );

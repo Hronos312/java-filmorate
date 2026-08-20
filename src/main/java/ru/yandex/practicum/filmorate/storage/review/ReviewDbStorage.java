@@ -52,28 +52,22 @@ public class ReviewDbStorage implements ReviewStorage {
             WHERE review_id = ?
             """;
 
-    private static final String ADD_LIKE_QUERY = """
-            UPDATE reviews
-            SET useful = useful + 1
-            WHERE review_id = ?
+    private static final String CHECK_USER_REACTION_QUERY = """
+            SELECT is_like FROM review_likes WHERE review_id = ? AND user_id = ?
             """;
 
-    private static final String REMOVE_LIKE_QUERY = """
-            UPDATE reviews
-            SET useful = useful - 1
-            WHERE review_id = ?
+    private static final String UPDATE_USEFUL_QUERY = """
+            UPDATE reviews SET useful = useful + ? WHERE review_id = ?
             """;
 
-    private static final String ADD_DISLIKE_QUERY = """
-            UPDATE reviews
-            SET useful = useful - 1
-            WHERE review_id = ?
+    private static final String UPSERT_REACTION_QUERY = """
+            MERGE INTO review_likes (review_id, user_id, is_like)
+            KEY (review_id, user_id)
+            VALUES (?, ?, ?)
             """;
 
-    private static final String REMOVE_DISLIKE_QUERY = """
-            UPDATE reviews
-            SET useful = useful + 1
-            WHERE review_id = ?
+    private static final String DELETE_REACTION_QUERY = """
+            DELETE FROM review_likes WHERE review_id = ? AND user_id = ?
             """;
 
     private final JdbcTemplate jdbc;
@@ -104,7 +98,6 @@ public class ReviewDbStorage implements ReviewStorage {
     @Transactional
     public Review create(Review review) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
-
         jdbc.update(connection -> {
             PreparedStatement statement = connection.prepareStatement(INSERT_QUERY, new String[]{"review_id"});
             statement.setLong(1, review.getFilmId());
@@ -118,7 +111,6 @@ public class ReviewDbStorage implements ReviewStorage {
         if (generatedId == null) {
             throw new IllegalStateException("Не удалось получить id созданного отзыва");
         }
-
         review.setId(generatedId.longValue());
         return findById(review.getId());
     }
@@ -129,20 +121,11 @@ public class ReviewDbStorage implements ReviewStorage {
         if (review.getId() == null) {
             throw new ValidationException("id должен быть указан");
         }
-
         findById(review.getId());
-
-        int updatedRows = jdbc.update(
-                UPDATE_QUERY,
-                review.getContent(),
-                review.getIsPositive(),
-                review.getId()
-        );
-
+        int updatedRows = jdbc.update(UPDATE_QUERY, review.getContent(), review.getIsPositive(), review.getId());
         if (updatedRows == 0) {
             throw new NotFoundException("Отзыв с id " + review.getId() + " не найден");
         }
-
         return findById(review.getId());
     }
 
@@ -155,27 +138,62 @@ public class ReviewDbStorage implements ReviewStorage {
     }
 
     @Override
+    @Transactional
     public void addLike(Long reviewId, Long userId) {
         findById(reviewId);
-        jdbc.update(ADD_LIKE_QUERY, reviewId);
+        Boolean isLike = getUserReaction(reviewId, userId);
+
+        if (Boolean.FALSE.equals(isLike)) {
+            jdbc.update(UPDATE_USEFUL_QUERY, 1, reviewId); // Убираем дизлайк
+        } else if (isLike == null) {
+            jdbc.update(UPDATE_USEFUL_QUERY, 1, reviewId); // Добавляем первый лайк
+        }
+        jdbc.update(UPSERT_REACTION_QUERY, reviewId, userId, true);
     }
 
     @Override
+    @Transactional
     public void removeLike(Long reviewId, Long userId) {
         findById(reviewId);
-        jdbc.update(REMOVE_LIKE_QUERY, reviewId);
+        Boolean isLike = getUserReaction(reviewId, userId);
+
+        if (Boolean.TRUE.equals(isLike)) {
+            jdbc.update(UPDATE_USEFUL_QUERY, -1, reviewId);
+            jdbc.update(DELETE_REACTION_QUERY, reviewId, userId);
+        }
     }
 
     @Override
+    @Transactional
     public void addDislike(Long reviewId, Long userId) {
         findById(reviewId);
-        jdbc.update(ADD_DISLIKE_QUERY, reviewId);
+        Boolean isLike = getUserReaction(reviewId, userId);
+
+        if (Boolean.TRUE.equals(isLike)) {
+            jdbc.update(UPDATE_USEFUL_QUERY, -1, reviewId); // Убираем старый лайк
+        }
+        if (isLike == null) {
+            jdbc.update(UPDATE_USEFUL_QUERY, -1, reviewId); // Добавляем первый дизлайк
+        }
+        jdbc.update(UPSERT_REACTION_QUERY, reviewId, userId, false);
     }
 
     @Override
+    @Transactional
     public void removeDislike(Long reviewId, Long userId) {
         findById(reviewId);
-        jdbc.update(REMOVE_DISLIKE_QUERY, reviewId);
+        Boolean isLike = getUserReaction(reviewId, userId);
+
+        if (Boolean.FALSE.equals(isLike)) {
+            jdbc.update(UPDATE_USEFUL_QUERY, 1, reviewId);
+            jdbc.update(DELETE_REACTION_QUERY, reviewId, userId);
+        }
+    }
+
+    private Boolean getUserReaction(Long reviewId, Long userId) {
+        return jdbc.query(CHECK_USER_REACTION_QUERY,
+                        (rs, rowNum) -> rs.getBoolean("is_like"), reviewId, userId)
+                .stream().findFirst().orElse(null);
     }
 
     private Review mapRow(ResultSet resultSet, int rowNum) throws SQLException {
