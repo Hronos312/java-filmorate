@@ -10,6 +10,8 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Review;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
 @Repository
@@ -88,7 +90,6 @@ public class ReviewDbStorage implements ReviewStorage {
     @Override
     public Review findById(Long id) {
         List<Review> reviews = jdbc.query(FIND_BY_ID_QUERY, this::mapRow, id);
-
         return reviews.stream()
                 .findFirst()
                 .orElseThrow(() -> new NotFoundException("Отзыв с id " + id + " не найден"));
@@ -105,25 +106,20 @@ public class ReviewDbStorage implements ReviewStorage {
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbc.update(connection -> {
-
-            PreparedStatement statement = connection.prepareStatement(INSERT_QUERY, new String[] { "review_id" });
-
+            PreparedStatement statement = connection.prepareStatement(INSERT_QUERY, new String[]{"review_id"});
             statement.setLong(1, review.getFilmId());
             statement.setLong(2, review.getUserId());
             statement.setString(3, review.getContent());
             statement.setBoolean(4, review.getIsPositive());
-
             return statement;
         }, keyHolder);
 
         Number generatedId = keyHolder.getKey();
-
         if (generatedId == null) {
             throw new IllegalStateException("Не удалось получить id созданного отзыва");
         }
 
         review.setId(generatedId.longValue());
-
         return findById(review.getId());
     }
 
@@ -153,7 +149,6 @@ public class ReviewDbStorage implements ReviewStorage {
     @Override
     public void delete(Long id) {
         int deletedRows = jdbc.update(DELETE_QUERY, id);
-
         if (deletedRows == 0) {
             throw new NotFoundException("Отзыв с id " + id + " не найден");
         }
@@ -173,21 +168,18 @@ public class ReviewDbStorage implements ReviewStorage {
 
     @Override
     public void addDislike(Long reviewId, Long userId) {
-        findById(reviewId); // Проверяем, что отзыв существует
+        findById(reviewId);
         jdbc.update(ADD_DISLIKE_QUERY, reviewId);
     }
 
     @Override
     public void removeDislike(Long reviewId, Long userId) {
-        findById(reviewId); // Проверяем, что отзыв существует
+        findById(reviewId);
         jdbc.update(REMOVE_DISLIKE_QUERY, reviewId);
     }
 
-    private Review mapRow(java.sql.ResultSet resultSet, int rowNum)
-            throws java.sql.SQLException {
-
+    private Review mapRow(ResultSet resultSet, int rowNum) throws SQLException {
         Review review = new Review();
-
         review.setId(resultSet.getLong("review_id"));
         review.setFilmId(resultSet.getLong("film_id"));
         review.setUserId(resultSet.getLong("user_id"));
@@ -195,7 +187,6 @@ public class ReviewDbStorage implements ReviewStorage {
         review.setIsPositive(resultSet.getBoolean("is_positive"));
         review.setCreated(resultSet.getDate("created").toLocalDate());
         review.setUseful(resultSet.getInt("useful"));
-
         return review;
     }
 }
