@@ -6,6 +6,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Map;
 
@@ -41,11 +42,17 @@ public class ErrorHandler {
         return Map.of("error", exception.getMessage());
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        log.warn("Некорректный формат идентификатора: {}", ex.getName());
+        return Map.of("error", "Некорректный формат идентификатора");
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Map<String, String> handleException(Exception exception) {
         log.error("Непредвиденная ошибка", exception);
         return Map.of("error", "Произошла непредвиденная ошибка");
     }
-
 }
