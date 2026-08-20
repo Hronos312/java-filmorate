@@ -33,6 +33,9 @@ public class ReviewService {
     }
 
     public Review findById(Long id) {
+        if (id == null) {
+            throw new ValidationException("ID отзыва не может быть null");
+        }
         log.debug("Поиск отзыва с id={}", id);
         return reviewStorage.findById(id);
     }
@@ -62,11 +65,17 @@ public class ReviewService {
     }
 
     public void delete(Long id) {
+        if (id == null) {
+            throw new ValidationException("ID отзыва не может быть null");
+        }
         log.debug("Удаление отзыва с id={}", id);
         reviewStorage.delete(id);
     }
 
     public void addLike(Long reviewId, Long userId) {
+        if (reviewId == null || userId == null) {
+            throw new ValidationException("ID отзыва и пользователя не могут быть null");
+        }
         log.debug("Добавление лайка к отзыву с id={} от пользователя id={}", reviewId, userId);
         reviewStorage.findById(reviewId);
         userStorage.findById(userId);
@@ -74,6 +83,9 @@ public class ReviewService {
     }
 
     public void removeLike(Long reviewId, Long userId) {
+        if (reviewId == null || userId == null) {
+            throw new ValidationException("ID отзыва и пользователя не могут быть null");
+        }
         log.debug("Удаление лайка с отзыва с id={} от пользователя id={}", reviewId, userId);
         reviewStorage.findById(reviewId);
         userStorage.findById(userId);
