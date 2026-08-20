@@ -144,9 +144,9 @@ public class ReviewDbStorage implements ReviewStorage {
         Boolean isLike = getUserReaction(reviewId, userId);
 
         if (Boolean.FALSE.equals(isLike)) {
-            jdbc.update(UPDATE_USEFUL_QUERY, 1, reviewId); // Убираем дизлайк
+            jdbc.update(UPDATE_USEFUL_QUERY, 2, reviewId);
         } else if (isLike == null) {
-            jdbc.update(UPDATE_USEFUL_QUERY, 1, reviewId); // Добавляем первый лайк
+            jdbc.update(UPDATE_USEFUL_QUERY, 1, reviewId);
         }
         jdbc.update(UPSERT_REACTION_QUERY, reviewId, userId, true);
     }
@@ -170,10 +170,9 @@ public class ReviewDbStorage implements ReviewStorage {
         Boolean isLike = getUserReaction(reviewId, userId);
 
         if (Boolean.TRUE.equals(isLike)) {
-            jdbc.update(UPDATE_USEFUL_QUERY, -1, reviewId); // Убираем старый лайк
-        }
-        if (isLike == null) {
-            jdbc.update(UPDATE_USEFUL_QUERY, -1, reviewId); // Добавляем первый дизлайк
+            jdbc.update(UPDATE_USEFUL_QUERY, -2, reviewId);
+        } else if (isLike == null) {
+            jdbc.update(UPDATE_USEFUL_QUERY, -1, reviewId);
         }
         jdbc.update(UPSERT_REACTION_QUERY, reviewId, userId, false);
     }
