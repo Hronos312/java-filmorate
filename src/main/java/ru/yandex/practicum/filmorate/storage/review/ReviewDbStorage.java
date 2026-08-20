@@ -94,7 +94,8 @@ public class ReviewDbStorage implements ReviewStorage {
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbc.update(connection -> {
-            PreparedStatement statement = connection.prepareStatement(INSERT_QUERY, Statement.RETURN_GENERATED_KEYS);
+
+            PreparedStatement statement = connection.prepareStatement(INSERT_QUERY, new String[] { "review_id" });
 
             statement.setLong(1, review.getFilmId());
             statement.setLong(2, review.getUserId());
