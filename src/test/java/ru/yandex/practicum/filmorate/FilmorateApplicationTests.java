@@ -749,6 +749,87 @@ class FilmorateApplicationTests {
 				);
 	}
 
+	@Test
+	void shouldReturnCorrectRecommendationsForTargetUser() {
+		User userTarget = makeValidUser();
+		userTarget.setEmail("target@test.com");
+		userTarget.setLogin("target");
+		userTarget = userStorage.create(userTarget);
+
+		User userSimilar = makeValidUser();
+		userSimilar.setEmail("similar@test.com");
+		userSimilar.setLogin("similar");
+		userSimilar = userStorage.create(userSimilar);
+
+		User userOther = makeValidUser();
+		userOther.setEmail("other@test.com");
+		userOther.setLogin("other");
+		userOther = userStorage.create(userOther);
+
+		Film filmA = makeValidFilm();
+		filmA.setName("Фильм А");
+		filmA = filmStorage.create(filmA);
+
+		Film filmB = makeValidFilm();
+		filmB.setName("Фильм Б");
+		filmB = filmStorage.create(filmB);
+
+		Film filmC = makeValidFilm();
+		filmC.setName("Фильм В (Рекомендация)");
+		filmC.setGenres(makeGenres(1L, 3L));
+		filmC = filmStorage.create(filmC);
+
+		Film filmD = makeValidFilm();
+		filmD.setName("Фильм Г");
+		filmD = filmStorage.create(filmD);
+
+		filmStorage.addLike(filmA.getId(), userTarget.getId());
+		filmStorage.addLike(filmB.getId(), userTarget.getId());
+
+		filmStorage.addLike(filmA.getId(), userSimilar.getId());
+		filmStorage.addLike(filmB.getId(), userSimilar.getId());
+		filmStorage.addLike(filmC.getId(), userSimilar.getId());
+
+		filmStorage.addLike(filmA.getId(), userOther.getId());
+		filmStorage.addLike(filmD.getId(), userOther.getId());
+
+		Collection<Film> recommendations = filmStorage.getRecommendations(userTarget.getId());
+
+		assertThat(recommendations)
+				.isNotNull()
+				.hasSize(1);
+
+		Film recommendedFilm = recommendations.iterator().next();
+		assertThat(recommendedFilm.getName()).isEqualTo("Фильм В (Рекомендация)");
+
+		assertThat(recommendedFilm.getGenres())
+				.hasSize(2)
+				.extracting(Genre::getId)
+				.containsExactlyInAnyOrder(1L, 3L);
+	}
+
+	@Test
+	void shouldReturnEmptyRecommendationsIfNoCommonLikes() {
+		User target = makeValidUser();
+		target.setEmail("target2@test.com");
+		target = userStorage.create(target);
+
+		User other = makeValidUser();
+		other.setEmail("other2@test.com");
+		other = userStorage.create(other);
+
+		Film film = makeValidFilm();
+		film = filmStorage.create(film);
+
+		filmStorage.addLike(film.getId(), other.getId());
+
+		Collection<Film> recommendations = filmStorage.getRecommendations(target.getId());
+
+		assertThat(recommendations)
+				.isNotNull()
+				.isEmpty();
+	}
+
 	private User makeValidUser() {
 		User user = new User();
 

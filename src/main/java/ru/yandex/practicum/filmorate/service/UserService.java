@@ -4,19 +4,24 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
-import java.util.Collection;
+import java.util.*;
 
 @Slf4j
 @Service
 public class UserService {
 
     private final UserStorage userStorage;
+    private final FilmStorage filmStorage;
 
-    public UserService(@Qualifier("userDbStorage") UserStorage userStorage) {
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage,
+                       @Qualifier("filmDbStorage") FilmStorage filmStorage) {
         this.userStorage = userStorage;
+        this.filmStorage = filmStorage;
     }
 
     public Collection<User> findAll() {
@@ -81,6 +86,15 @@ public class UserService {
         userStorage.findById(otherId);
 
         return userStorage.getCommonFriends(userId, otherId);
+    }
+
+    public Collection<Film> getRecommendations(Long userId) {
+        userStorage.findById(userId);
+
+        Collection<Film> recommendedFilms = filmStorage.getRecommendations(userId);
+
+        log.info("Сформировано {} рекомендаций для пользователя с id: {}", recommendedFilms.size(), userId);
+        return recommendedFilms;
     }
 
     public void delete(Long id) {
