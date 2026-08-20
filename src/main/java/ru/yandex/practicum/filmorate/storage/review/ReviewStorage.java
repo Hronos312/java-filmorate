@@ -2,12 +2,11 @@ package ru.yandex.practicum.filmorate.storage.review;
 
 import ru.yandex.practicum.filmorate.model.Review;
 
-import java.util.Collection;
 import java.util.List;
 
 public interface ReviewStorage {
 
-    Collection<Review> findAll();
+    List<Review> findAll();
 
     Review findById(Long id);
 
