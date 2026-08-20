@@ -83,6 +83,12 @@ public class UserService {
         return userStorage.getCommonFriends(userId, otherId);
     }
 
+    public void delete(Long id) {
+        userStorage.delete(id);
+
+        log.info("Пользователь с id {} удалён", id);
+    }
+
     private void setNameIfEmpty(User user) {
         if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());
