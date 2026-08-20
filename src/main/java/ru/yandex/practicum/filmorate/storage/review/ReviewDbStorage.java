@@ -62,6 +62,18 @@ public class ReviewDbStorage implements ReviewStorage {
             WHERE review_id = ?
             """;
 
+    private static final String ADD_DISLIKE_QUERY = """
+            UPDATE reviews
+            SET useful = useful - 1
+            WHERE review_id = ?
+            """;
+
+    private static final String REMOVE_DISLIKE_QUERY = """
+            UPDATE reviews
+            SET useful = useful + 1
+            WHERE review_id = ?
+            """;
+
     private final JdbcTemplate jdbc;
 
     public ReviewDbStorage(JdbcTemplate jdbc) {
@@ -157,6 +169,18 @@ public class ReviewDbStorage implements ReviewStorage {
     public void removeLike(Long reviewId, Long userId) {
         findById(reviewId);
         jdbc.update(REMOVE_LIKE_QUERY, reviewId);
+    }
+
+    @Override
+    public void addDislike(Long reviewId, Long userId) {
+        findById(reviewId); // Проверяем, что отзыв существует
+        jdbc.update(ADD_DISLIKE_QUERY, reviewId);
+    }
+
+    @Override
+    public void removeDislike(Long reviewId, Long userId) {
+        findById(reviewId); // Проверяем, что отзыв существует
+        jdbc.update(REMOVE_DISLIKE_QUERY, reviewId);
     }
 
     private Review mapRow(java.sql.ResultSet resultSet, int rowNum)

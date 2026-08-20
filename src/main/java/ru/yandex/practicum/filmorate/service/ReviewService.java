@@ -106,4 +106,22 @@ public class ReviewService {
             throw new ValidationException("Тип отзыва должен быть указан");
         }
     }
+
+    public void addDislike(Long reviewId, Long userId) {
+        if (reviewId == null || userId == null) {
+            throw new ValidationException("ID отзыва и пользователя не могут быть null");
+        }
+        reviewStorage.findById(reviewId);
+        userStorage.findById(userId);
+        reviewStorage.addDislike(reviewId, userId);
+    }
+
+    public void removeDislike(Long reviewId, Long userId) {
+        if (reviewId == null || userId == null) {
+            throw new ValidationException("ID отзыва и пользователя не могут быть null");
+        }
+        reviewStorage.findById(reviewId);
+        userStorage.findById(userId);
+        reviewStorage.removeDislike(reviewId, userId);
+    }
 }
