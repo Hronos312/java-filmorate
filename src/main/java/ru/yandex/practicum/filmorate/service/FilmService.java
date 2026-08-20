@@ -99,7 +99,7 @@ public class FilmService {
 
         return filmStorage.findByDirector(directorId, sortBy);
     }
-      
+
     public void delete(Long id) {
         filmStorage.delete(id);
 
