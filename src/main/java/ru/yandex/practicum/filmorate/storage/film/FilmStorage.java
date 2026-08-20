@@ -19,6 +19,4 @@ public interface FilmStorage {
     void addLike(Long filmId, Long userId);
 
     void removeLike(Long filmId, Long userId);
-
-    Collection<Film> findPopular(Integer count, Long genreId, Integer year);
 }

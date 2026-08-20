@@ -93,6 +93,12 @@ public class FilmService {
         return filmStorage.findPopular(count, genreId, year);
     }
 
+    public void delete(Long id) {
+        filmStorage.delete(id);
+
+        log.info("Фильм с id {} удалён", id);
+    }
+
     private void validateReleaseDate(Film film) {
         if (film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
             log.warn("Ошибка валидации фильма: некорректная дата релиза {}", film.getReleaseDate());
