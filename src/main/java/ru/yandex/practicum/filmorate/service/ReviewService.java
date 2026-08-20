@@ -1,7 +1,6 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Review;
@@ -19,13 +18,13 @@ public class ReviewService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
 
-    public ReviewService(@Qualifier("reviewDbStorage") ReviewStorage reviewStorage,
-                                             @Qualifier("filmDbStorage") FilmStorage filmStorage,
-                                             @Qualifier("userDbStorage") UserStorage userStorage) {
+    public ReviewService(ReviewStorage reviewStorage,
+                         FilmStorage filmStorage,
+                         UserStorage userStorage) {
         this.reviewStorage = reviewStorage;
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
-  }
+    }
 
     public List<Review> findAll() {
         log.debug("Получение всех отзывов");
@@ -92,6 +91,27 @@ public class ReviewService {
         reviewStorage.removeLike(reviewId, userId);
     }
 
+    // === МЕТОДЫ ДЛЯ ДИЗЛАЙКОВ ===
+    public void addDislike(Long reviewId, Long userId) {
+        if (reviewId == null || userId == null) {
+            throw new ValidationException("ID отзыва и пользователя не могут быть null");
+        }
+        log.debug("Добавление дизлайка к отзыву с id={} от пользователя id={}", reviewId, userId);
+        reviewStorage.findById(reviewId);
+        userStorage.findById(userId);
+        reviewStorage.addDislike(reviewId, userId);
+    }
+
+    public void removeDislike(Long reviewId, Long userId) {
+        if (reviewId == null || userId == null) {
+            throw new ValidationException("ID отзыва и пользователя не могут быть null");
+        }
+        log.debug("Удаление дизлайка с отзыва с id={} от пользователя id={}", reviewId, userId);
+        reviewStorage.findById(reviewId);
+        userStorage.findById(userId);
+        reviewStorage.removeDislike(reviewId, userId);
+    }
+
     private void validateReview(Review review) {
         if (review.getFilmId() == null) {
             throw new ValidationException("ID фильма должен быть указан");
@@ -105,23 +125,5 @@ public class ReviewService {
         if (review.getIsPositive() == null) {
             throw new ValidationException("Тип отзыва должен быть указан");
         }
-    }
-
-    public void addDislike(Long reviewId, Long userId) {
-        if (reviewId == null || userId == null) {
-            throw new ValidationException("ID отзыва и пользователя не могут быть null");
-        }
-        reviewStorage.findById(reviewId);
-        userStorage.findById(userId);
-        reviewStorage.addDislike(reviewId, userId);
-    }
-
-    public void removeDislike(Long reviewId, Long userId) {
-        if (reviewId == null || userId == null) {
-            throw new ValidationException("ID отзыва и пользователя не могут быть null");
-        }
-        reviewStorage.findById(reviewId);
-        userStorage.findById(userId);
-        reviewStorage.removeDislike(reviewId, userId);
     }
 }

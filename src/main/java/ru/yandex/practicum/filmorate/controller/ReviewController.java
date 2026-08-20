@@ -31,11 +31,6 @@ public class ReviewController {
         return reviewService.findById(id);
     }
 
-    @GetMapping("/film/{filmId}")
-    public List<Review> findByFilmId(@PathVariable Long filmId) {
-        return reviewService.findByFilmId(filmId);
-    }
-
     @PostMapping
     public Review create(@Valid @RequestBody Review review) {
         return reviewService.create(review);
@@ -61,6 +56,7 @@ public class ReviewController {
         reviewService.removeLike(id, userId);
     }
 
+    // === ЭНДПОИНТЫ ДЛЯ ДИЗЛАЙКОВ ===
     @PutMapping("/{id}/dislike/{userId}")
     public void addDislike(@PathVariable Long id, @PathVariable Long userId) {
         reviewService.addDislike(id, userId);
