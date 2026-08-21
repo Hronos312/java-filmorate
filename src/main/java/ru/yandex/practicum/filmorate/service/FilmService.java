@@ -127,7 +127,7 @@ public class FilmService {
         List<String> searchBy = Arrays.asList(by.split(","));
 
         for (String param : searchBy) {
-            if(!"director".equalsIgnoreCase(param) && !"title".equalsIgnoreCase(param)) {
+            if (!"director".equalsIgnoreCase(param) && !"title".equalsIgnoreCase(param)) {
                 throw new ValidationException("Параметр by не может содержать только значения: director, title");
             }
         }
