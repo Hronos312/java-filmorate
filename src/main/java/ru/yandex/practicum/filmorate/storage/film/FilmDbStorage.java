@@ -266,7 +266,7 @@ public class FilmDbStorage implements FilmStorage {
             f.duration,
             m.mpa_id,
             m.name
-            ORDER BY likes_count DESC, f.film_id    
+            ORDER BY likes_count DESC, f.film_id
     """;
 
     private final JdbcTemplate jdbc;
