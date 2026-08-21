@@ -44,10 +44,13 @@ public class ReviewService {
         return reviewStorage.findById(id);
     }
 
-    public List<Review> findByFilmId(Long filmId) {
+    public List<Review> findByFilmId(Long filmId, Integer count) {
         log.debug("Поиск отзывов для фильма с id={}", filmId);
+        if (count == null || count <= 0) {
+            count = 10;
+        }
         filmStorage.findById(filmId);
-        return reviewStorage.findByFilmId(filmId);
+        return reviewStorage.findByFilmId(filmId, count);
     }
 
     public Review create(Review review) {

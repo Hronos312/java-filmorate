@@ -31,11 +31,12 @@ public class ReviewDbStorage implements ReviewStorage {
             """;
 
     private static final String FIND_BY_FILM_ID_QUERY = """
-            SELECT review_id, film_id, user_id, content, is_positive, created, useful
-            FROM reviews
-            WHERE film_id = ?
-            ORDER BY useful DESC, review_id
-            """;
+        SELECT review_id, film_id, user_id, content, is_positive, created, useful
+        FROM reviews
+        WHERE film_id = ?
+        ORDER BY useful DESC, review_id
+        LIMIT ?
+        """;
 
     private static final String INSERT_QUERY = """
             INSERT INTO reviews (film_id, user_id, content, is_positive, created, useful)
@@ -91,8 +92,8 @@ public class ReviewDbStorage implements ReviewStorage {
     }
 
     @Override
-    public List<Review> findByFilmId(Long filmId) {
-        return jdbc.query(FIND_BY_FILM_ID_QUERY, this::mapRow, filmId);
+    public List<Review> findByFilmId(Long filmId, Integer count) {
+        return jdbc.query(FIND_BY_FILM_ID_QUERY, this::mapRow, filmId, count);
     }
 
     @Override

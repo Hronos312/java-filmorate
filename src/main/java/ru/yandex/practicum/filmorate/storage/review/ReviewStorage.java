@@ -10,7 +10,7 @@ public interface ReviewStorage {
 
     Review findById(Long id);
 
-    List<Review> findByFilmId(Long filmId);
+    List<Review> findByFilmId(Long filmId, Integer count);
 
     Review create(Review review);
 

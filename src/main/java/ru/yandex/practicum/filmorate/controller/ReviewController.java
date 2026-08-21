@@ -29,7 +29,7 @@ public class ReviewController {
     public List<Review> findAll(@RequestParam(required = false) Long filmId,
                                 @RequestParam(required = false, defaultValue = "10") Integer count) {
         if (filmId != null) {
-            return reviewService.findByFilmId(filmId);
+            return reviewService.findByFilmId(filmId, count);
         }
         return reviewService.findAll(count);
     }
