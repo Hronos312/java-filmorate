@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface ReviewStorage {
 
-    List<Review> findAll();
+    List<Review> findAll(Integer count);
 
     Review findById(Long id);
 

@@ -28,9 +28,12 @@ public class ReviewService {
         this.userStorage = userStorage;
     }
 
-    public List<Review> findAll() {
-        log.debug("Получение всех отзывов");
-        return reviewStorage.findAll();
+    public List<Review> findAll(Integer count) {
+        log.debug("Получение всех отзывов с ограничением count={}", count);
+        if (count == null || count <= 0) {
+            count = 10;
+        }
+        return reviewStorage.findAll(count);
     }
 
     public Review findById(Long id) {

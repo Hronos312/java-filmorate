@@ -18,10 +18,11 @@ import java.util.List;
 public class ReviewDbStorage implements ReviewStorage {
 
     private static final String FIND_ALL_QUERY = """
-            SELECT review_id, film_id, user_id, content, is_positive, created, useful
-            FROM reviews
-            ORDER BY review_id
-            """;
+        SELECT review_id, film_id, user_id, content, is_positive, created, useful
+        FROM reviews
+        ORDER BY useful DESC, review_id
+        LIMIT ?
+        """;
 
     private static final String FIND_BY_ID_QUERY = """
             SELECT review_id, film_id, user_id, content, is_positive, created, useful
@@ -77,8 +78,8 @@ public class ReviewDbStorage implements ReviewStorage {
     }
 
     @Override
-    public List<Review> findAll() {
-        return jdbc.query(FIND_ALL_QUERY, this::mapRow);
+    public List<Review> findAll(Integer count) {
+        return jdbc.query(FIND_ALL_QUERY, this::mapRow, count);
     }
 
     @Override
