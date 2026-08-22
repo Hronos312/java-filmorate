@@ -106,7 +106,7 @@ public class FilmDbStorage implements FilmStorage {
               AND user_id = ?
             """;
 
-    private static final String FIND_POPULAR_QUERY = """
+    private static final String FIND_POPULAR_BASE_QUERY = """
             SELECT f.film_id,
                    f.name,
                    f.description,
@@ -118,6 +118,19 @@ public class FilmDbStorage implements FilmStorage {
             FROM films AS f
             JOIN mpa AS m ON m.mpa_id = f.mpa_id
             LEFT JOIN film_likes AS fl ON fl.film_id = f.film_id
+            """;
+
+    private static final String FIND_POPULAR_GENRE_JOIN = """
+            JOIN film_genres AS fg
+              ON fg.film_id = f.film_id
+             AND fg.genre_id = ?
+            """;
+
+    private static final String FIND_POPULAR_YEAR_FILTER = """
+            WHERE EXTRACT(YEAR FROM f.release_date) = ?
+            """;
+
+    private static final String FIND_POPULAR_TAIL_QUERY = """
             GROUP BY f.film_id,
                      f.name,
                      f.description,
@@ -385,11 +398,27 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
-    public Collection<Film> findPopular(Integer count) {
+    public Collection<Film> findPopular(Integer count, Long genreId, Integer year) {
+        StringBuilder query = new StringBuilder(FIND_POPULAR_BASE_QUERY);
+        List<Object> params = new ArrayList<>();
+
+        if (genreId != null) {
+            query.append(FIND_POPULAR_GENRE_JOIN);
+            params.add(genreId);
+        }
+
+        if (year != null) {
+            query.append(FIND_POPULAR_YEAR_FILTER);
+            params.add(year);
+        }
+
+        query.append(FIND_POPULAR_TAIL_QUERY);
+        params.add(count);
+
         List<Film> films = jdbc.query(
-                FIND_POPULAR_QUERY,
+                query.toString(),
                 this::mapRow,
-                count
+                params.toArray()
         );
 
         loadRelations(films);

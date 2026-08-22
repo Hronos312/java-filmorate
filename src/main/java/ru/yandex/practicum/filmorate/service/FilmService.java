@@ -8,6 +8,7 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.director.DirectorStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
+import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -18,15 +19,18 @@ public class FilmService {
 
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
+    private final GenreStorage genreStorage;
     private final DirectorStorage directorStorage;
 
     public FilmService(
             @Qualifier("filmDbStorage") FilmStorage filmStorage,
             @Qualifier("userDbStorage") UserStorage userStorage,
+            GenreStorage genreStorage,
             @Qualifier("directorDbStorage") DirectorStorage directorStorage
     ) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
+        this.genreStorage = genreStorage;
         this.directorStorage = directorStorage;
     }
 
@@ -76,7 +80,7 @@ public class FilmService {
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
-    public Collection<Film> getPopularFilms(Integer count) {
+    public Collection<Film> getPopularFilms(Integer count, Long genreId, Integer year) {
         if (count == null) {
             count = 10;
         }
@@ -87,7 +91,11 @@ public class FilmService {
             throw new ValidationException("Параметр count должен быть положительным");
         }
 
-        return filmStorage.findPopular(count);
+        if (genreId != null) {
+            genreStorage.findById(genreId);
+        }
+
+        return filmStorage.findPopular(count, genreId, year);
     }
 
     public Collection<Film> getFilmsByDirector(Long directorId, String sortBy) {
