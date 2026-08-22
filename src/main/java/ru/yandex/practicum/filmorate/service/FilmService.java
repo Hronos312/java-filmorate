@@ -33,16 +33,6 @@ public class FilmService {
         this.genreStorage = genreStorage;
         this.directorStorage = directorStorage;
     }
-  
-    public FilmService(
-            @Qualifier("filmDbStorage") FilmStorage filmStorage,
-            @Qualifier("userDbStorage") UserStorage userStorage,
-            @Qualifier("directorDbStorage") DirectorStorage directorStorage
-    ) {
-        this.filmStorage = filmStorage;
-        this.userStorage = userStorage;
-        this.directorStorage = directorStorage;
-    }
 
     public Collection<Film> findAll() {
         return filmStorage.findAll();
