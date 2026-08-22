@@ -124,10 +124,12 @@ public class FilmService {
             throw new ValidationException("Параметр by не может быть пустым");
         }
 
-        List<String> searchBy = Arrays.asList(by.split(","));
+        List<String> searchBy = Arrays.stream(by.split(","))
+                .map(String::toLowerCase)
+                .toList();
 
         for (String param : searchBy) {
-            if (!"director".equalsIgnoreCase(param) && !"title".equalsIgnoreCase(param)) {
+            if (!"director".equals(param) && !"title".equals(param)) {
                 throw new ValidationException("Параметр by не может содержать только значения: director, title");
             }
         }
