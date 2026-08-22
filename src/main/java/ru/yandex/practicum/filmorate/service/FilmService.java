@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.storage.director.DirectorStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
@@ -19,14 +20,28 @@ public class FilmService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
     private final GenreStorage genreStorage;
+    private final DirectorStorage directorStorage;
 
-    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
+    public FilmService(
+            @Qualifier("filmDbStorage") FilmStorage filmStorage,
             @Qualifier("userDbStorage") UserStorage userStorage,
-                       GenreStorage genreStorage
+            GenreStorage genreStorage,
+            @Qualifier("directorDbStorage") DirectorStorage directorStorage
     ) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
         this.genreStorage = genreStorage;
+        this.directorStorage = directorStorage;
+    }
+  
+    public FilmService(
+            @Qualifier("filmDbStorage") FilmStorage filmStorage,
+            @Qualifier("userDbStorage") UserStorage userStorage,
+            @Qualifier("directorDbStorage") DirectorStorage directorStorage
+    ) {
+        this.filmStorage = filmStorage;
+        this.userStorage = userStorage;
+        this.directorStorage = directorStorage;
     }
 
     public Collection<Film> findAll() {
@@ -91,6 +106,16 @@ public class FilmService {
         }
 
         return filmStorage.findPopular(count, genreId, year);
+    }
+
+    public Collection<Film> getFilmsByDirector(Long directorId, String sortBy) {
+        directorStorage.findById(directorId);
+
+        if (!"year".equalsIgnoreCase(sortBy) && !"likes".equalsIgnoreCase(sortBy)) {
+            throw new ValidationException("Параметр sortBy должен иметь значение year или likes");
+        }
+
+        return filmStorage.findByDirector(directorId, sortBy);
     }
 
     public void delete(Long id) {
