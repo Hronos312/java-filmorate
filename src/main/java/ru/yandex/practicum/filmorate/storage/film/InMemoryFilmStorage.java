@@ -71,11 +71,34 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public Collection<Film> findPopular(Integer count) {
+    public Collection<Film> findPopular(Integer count, Long genreId, Integer year) {
         return films.values()
                 .stream()
+                .filter(film -> genreId == null || film.getGenres().stream()
+                        .anyMatch(genre -> genreId.equals(genre.getId())))
+                .filter(film -> year == null || year.equals(film.getReleaseDate().getYear()))
                 .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
                 .limit(count)
+                .toList();
+    }
+
+    @Override
+    public Collection<Film> findByDirector(Long directorId, String sortBy) {
+        Comparator<Film> comparator;
+
+        if ("year".equalsIgnoreCase(sortBy)) {
+            comparator = Comparator.comparing(Film::getReleaseDate);
+        } else if ("likes".equalsIgnoreCase(sortBy)) {
+            comparator = Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed();
+        } else {
+            throw new ValidationException("Параметр sortBy должен иметь значение year или likes");
+        }
+
+        return films.values().stream()
+                .filter(film -> film.getDirectors().stream()
+                        .anyMatch(director -> director.getId().equals(directorId))
+                )
+                .sorted(comparator)
                 .toList();
     }
 
