@@ -4,11 +4,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.Event;
+import ru.yandex.practicum.filmorate.model.EventType;
+import ru.yandex.practicum.filmorate.model.Operation;
 import ru.yandex.practicum.filmorate.model.Review;
+import ru.yandex.practicum.filmorate.storage.event.EventStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.review.ReviewStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
+import java.time.Instant;
 import java.util.List;
 
 @Slf4j
@@ -18,14 +23,17 @@ public class ReviewService {
     private final ReviewStorage reviewStorage;
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
+    private final EventStorage eventStorage;
 
     public ReviewService(
             @Qualifier("reviewDbStorage") ReviewStorage reviewStorage,
             @Qualifier("filmDbStorage") FilmStorage filmStorage,
-            @Qualifier("userDbStorage") UserStorage userStorage) {
+            @Qualifier("userDbStorage") UserStorage userStorage,
+            @Qualifier("eventDbStorage") EventStorage eventStorage) {
         this.reviewStorage = reviewStorage;
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
+        this.eventStorage = eventStorage;
     }
 
     public List<Review> findAll(Integer count) {
@@ -58,6 +66,16 @@ public class ReviewService {
         validateReview(review);
         filmStorage.findById(review.getFilmId());
         userStorage.findById(review.getUserId());
+
+        Review createdReview = reviewStorage.create(review);
+        eventStorage.addEvent(Event.builder()
+            .timestamp(Instant.now().toEpochMilli())
+            .userId(createdReview.getUserId())
+            .eventType(EventType.REVIEW)
+            .operation(Operation.ADD)
+            .entityId(createdReview.getId())
+            .build());
+
         return reviewStorage.create(review);
     }
 
@@ -68,6 +86,16 @@ public class ReviewService {
         }
         reviewStorage.findById(review.getId());
         validateReview(review);
+
+        Review updatedReview = reviewStorage.update(review);
+        eventStorage.addEvent(Event.builder()
+            .timestamp(Instant.now().toEpochMilli())
+            .userId(updatedReview.getUserId())
+            .eventType(EventType.REVIEW)
+            .operation(Operation.UPDATE)
+            .entityId(updatedReview.getId())
+            .build());
+
         return reviewStorage.update(review);
     }
 
@@ -76,7 +104,18 @@ public class ReviewService {
             throw new ValidationException("ID отзыва не может быть null");
         }
         log.debug("Удаление отзыва с id={}", id);
+
+        Review reviewToDelete = reviewStorage.findById(id);
+
         reviewStorage.delete(id);
+
+        eventStorage.addEvent(Event.builder()
+            .timestamp(Instant.now().toEpochMilli())
+            .userId(reviewToDelete.getUserId())
+            .eventType(EventType.REVIEW)
+            .operation(Operation.REMOVE)
+            .entityId(id)
+            .build());
     }
 
     public void addLike(Long reviewId, Long userId) {

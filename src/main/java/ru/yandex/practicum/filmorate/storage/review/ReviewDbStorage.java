@@ -14,7 +14,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-@Repository
+@Repository("reviewDbStorage")
 public class ReviewDbStorage implements ReviewStorage {
 
     private static final String FIND_ALL_QUERY = """
