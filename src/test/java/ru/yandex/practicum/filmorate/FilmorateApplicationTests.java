@@ -10,20 +10,21 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.model.FriendshipStatus;
-import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.model.Mpa;
-import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.*;
+import ru.yandex.practicum.filmorate.storage.event.EventDbStorage;
+import ru.yandex.practicum.filmorate.storage.event.EventStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.genre.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
 import ru.yandex.practicum.filmorate.storage.mpa.MpaDbStorage;
 import ru.yandex.practicum.filmorate.storage.mpa.MpaStorage;
+import ru.yandex.practicum.filmorate.storage.review.ReviewDbStorage;
+import ru.yandex.practicum.filmorate.storage.review.ReviewStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserDbStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -34,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
-@Import({UserDbStorage.class, FilmDbStorage.class, GenreDbStorage.class, MpaDbStorage.class})
+@Import({UserDbStorage.class, FilmDbStorage.class, GenreDbStorage.class, MpaDbStorage.class, EventDbStorage.class, ReviewDbStorage.class})
 class FilmorateApplicationTests {
 
 	private static final Validator VALIDATOR =
@@ -44,18 +45,24 @@ class FilmorateApplicationTests {
 	private final FilmStorage filmStorage;
 	private final GenreStorage genreStorage;
 	private final MpaStorage mpaStorage;
+	private final EventStorage eventStorage;
+	private final ReviewStorage reviewStorage;
 
 	@Autowired
 	FilmorateApplicationTests(
 			@Qualifier("userDbStorage") UserStorage userStorage,
 			@Qualifier("filmDbStorage") FilmStorage filmStorage,
 			GenreStorage genreStorage,
-			MpaStorage mpaStorage
+			MpaStorage mpaStorage,
+			@Qualifier("eventDbStorage") EventStorage eventStorage,
+			@Qualifier("reviewDbStorage") ReviewStorage reviewStorage
 	) {
 		this.userStorage = userStorage;
 		this.filmStorage = filmStorage;
 		this.genreStorage = genreStorage;
 		this.mpaStorage = mpaStorage;
+		this.eventStorage = eventStorage;
+		this.reviewStorage = reviewStorage;
 	}
 
 	@Test
@@ -754,84 +761,211 @@ class FilmorateApplicationTests {
 	}
 
 	@Test
-	void shouldReturnCorrectRecommendationsForTargetUser() {
-		User userTarget = makeValidUser();
-		userTarget.setEmail("target@test.com");
-		userTarget.setLogin("target");
-		userTarget = userStorage.create(userTarget);
-
-		User userSimilar = makeValidUser();
-		userSimilar.setEmail("similar@test.com");
-		userSimilar.setLogin("similar");
-		userSimilar = userStorage.create(userSimilar);
-
-		User userOther = makeValidUser();
-		userOther.setEmail("other@test.com");
-		userOther.setLogin("other");
-		userOther = userStorage.create(userOther);
-
-		Film filmA = makeValidFilm();
-		filmA.setName("Фильм А");
-		filmA = filmStorage.create(filmA);
-
-		Film filmB = makeValidFilm();
-		filmB.setName("Фильм Б");
-		filmB = filmStorage.create(filmB);
-
-		Film filmC = makeValidFilm();
-		filmC.setName("Фильм В (Рекомендация)");
-		filmC.setGenres(makeGenres(1L, 3L));
-		filmC = filmStorage.create(filmC);
-
-		Film filmD = makeValidFilm();
-		filmD.setName("Фильм Г");
-		filmD = filmStorage.create(filmD);
-
-		filmStorage.addLike(filmA.getId(), userTarget.getId());
-		filmStorage.addLike(filmB.getId(), userTarget.getId());
-
-		filmStorage.addLike(filmA.getId(), userSimilar.getId());
-		filmStorage.addLike(filmB.getId(), userSimilar.getId());
-		filmStorage.addLike(filmC.getId(), userSimilar.getId());
-
-		filmStorage.addLike(filmA.getId(), userOther.getId());
-		filmStorage.addLike(filmD.getId(), userOther.getId());
-
-		Collection<Film> recommendations = filmStorage.getRecommendations(userTarget.getId());
-
-		assertThat(recommendations)
-				.isNotNull()
-				.hasSize(1);
-
-		Film recommendedFilm = recommendations.iterator().next();
-		assertThat(recommendedFilm.getName()).isEqualTo("Фильм В (Рекомендация)");
-
-		assertThat(recommendedFilm.getGenres())
-				.hasSize(2)
-				.extracting(Genre::getId)
-				.containsExactlyInAnyOrder(1L, 3L);
-	}
-
-	@Test
-	void shouldReturnEmptyRecommendationsIfNoCommonLikes() {
-		User target = makeValidUser();
-		target.setEmail("target2@test.com");
-		target = userStorage.create(target);
-
-		User other = makeValidUser();
-		other.setEmail("other2@test.com");
-		other = userStorage.create(other);
+	void testEventFeed() {
+		User user = makeValidUser();
+		User createdUser = userStorage.create(user);
+		Long userId = createdUser.getId();
 
 		Film film = makeValidFilm();
-		film = filmStorage.create(film);
+		Film createdFilm = filmStorage.create(film);
+		Long filmId = createdFilm.getId();
 
-		filmStorage.addLike(film.getId(), other.getId());
+		Collection<Event> initialFeed = eventStorage.getFeedByUserId(userId);
+		assertThat(initialFeed).isEmpty();
 
-		Collection<Film> recommendations = filmStorage.getRecommendations(target.getId());
+		long timestamp1 = Instant.now().toEpochMilli();
+		Event friendEvent = Event.builder()
+			.timestamp(timestamp1)
+			.userId(userId)
+			.eventType(EventType.FRIEND)
+			.operation(Operation.ADD)
+			.entityId(99L)
+			.build();
 
-		assertThat(recommendations)
-				.isNotNull()
-				.isEmpty();
+		try {
+			Thread.sleep(10);
+		} catch (InterruptedException ignored) {
+			// Пауза для корректной сортировки timestamp
+		}
+
+		long timestamp2 = Instant.now().toEpochMilli();
+		Event likeEvent = Event.builder()
+			.timestamp(timestamp2)
+			.userId(userId)
+			.eventType(EventType.LIKE)
+			.operation(Operation.ADD)
+			.entityId(filmId)
+			.build();
+
+		eventStorage.addEvent(friendEvent);
+		eventStorage.addEvent(likeEvent);
+
+		Collection<Event> userFeed = eventStorage.getFeedByUserId(userId);
+
+		assertThat(userFeed)
+			.isNotNull()
+			.hasSize(2);
+
+		Event firstEventInFeed = userFeed.stream().findFirst().orElseThrow();
+		assertThat(firstEventInFeed.getEventType()).isEqualTo(EventType.FRIEND);
+		assertThat(firstEventInFeed.getOperation()).isEqualTo(Operation.ADD);
+		assertThat(firstEventInFeed.getUserId()).isEqualTo(userId);
+		assertThat(firstEventInFeed.getEntityId()).isEqualTo(99L);
+		assertThat(firstEventInFeed.getEventId()).isPositive();
+
+		Event secondEventInFeed = userFeed.stream().skip(1).findFirst().orElseThrow();
+		assertThat(secondEventInFeed.getEventType()).isEqualTo(EventType.LIKE);
+		assertThat(secondEventInFeed.getOperation()).isEqualTo(Operation.ADD);
+		assertThat(secondEventInFeed.getUserId()).isEqualTo(userId);
+		assertThat(secondEventInFeed.getEntityId()).isEqualTo(filmId);
+	}
+
+    @Test
+    void shouldReturnCorrectRecommendationsForTargetUser() {
+        User userTarget = makeValidUser();
+        userTarget.setEmail("target@test.com");
+        userTarget.setLogin("target");
+        userTarget = userStorage.create(userTarget);
+
+        User userSimilar = makeValidUser();
+        userSimilar.setEmail("similar@test.com");
+        userSimilar.setLogin("similar");
+        userSimilar = userStorage.create(userSimilar);
+
+        User userOther = makeValidUser();
+        userOther.setEmail("other@test.com");
+        userOther.setLogin("other");
+        userOther = userStorage.create(userOther);
+
+        Film filmA = makeValidFilm();
+        filmA.setName("Фильм А");
+        filmA = filmStorage.create(filmA);
+
+        Film filmB = makeValidFilm();
+        filmB.setName("Фильм Б");
+        filmB = filmStorage.create(filmB);
+
+        Film filmC = makeValidFilm();
+        filmC.setName("Фильм В (Рекомендация)");
+        filmC.setGenres(makeGenres(1L, 3L));
+        filmC = filmStorage.create(filmC);
+
+        Film filmD = makeValidFilm();
+        filmD.setName("Фильм Г");
+        filmD = filmStorage.create(filmD);
+
+        filmStorage.addLike(filmA.getId(), userTarget.getId());
+        filmStorage.addLike(filmB.getId(), userTarget.getId());
+
+        filmStorage.addLike(filmA.getId(), userSimilar.getId());
+        filmStorage.addLike(filmB.getId(), userSimilar.getId());
+        filmStorage.addLike(filmC.getId(), userSimilar.getId());
+
+        filmStorage.addLike(filmA.getId(), userOther.getId());
+        filmStorage.addLike(filmD.getId(), userOther.getId());
+
+        Collection<Film> recommendations = filmStorage.getRecommendations(userTarget.getId());
+
+        assertThat(recommendations)
+			.isNotNull()
+			.hasSize(1);
+
+        Film recommendedFilm = recommendations.iterator().next();
+        assertThat(recommendedFilm.getName()).isEqualTo("Фильм В (Рекомендация)");
+
+        assertThat(recommendedFilm.getGenres())
+			.hasSize(2)
+			.extracting(Genre::getId)
+			.containsExactlyInAnyOrder(1L, 3L);
+    }
+
+    @Test
+    void shouldReturnEmptyRecommendationsIfNoCommonLikes() {
+        User target = makeValidUser();
+        target.setEmail("target2@test.com");
+        target = userStorage.create(target);
+
+        User other = makeValidUser();
+        other.setEmail("other2@test.com");
+        other = userStorage.create(other);
+
+        Film film = makeValidFilm();
+        film = filmStorage.create(film);
+
+        filmStorage.addLike(film.getId(), other.getId());
+
+        Collection<Film> recommendations = filmStorage.getRecommendations(target.getId());
+
+        assertThat(recommendations)
+			.isNotNull()
+			.isEmpty();
+    }
+
+	@Test
+	void testReviewEventsInFeed() {
+		User user = makeValidUser();
+		User createdUser = userStorage.create(user);
+		Long userId = createdUser.getId();
+
+		Film film = makeValidFilm();
+		Film createdFilm = filmStorage.create(film);
+		Long filmId = createdFilm.getId();
+
+		assertThat(eventStorage.getFeedByUserId(userId)).isEmpty();
+
+		Review review = makeValidReview(userId, filmId);
+		Review createdReview = reviewStorage.create(review);
+		Long reviewId = createdReview.getId();
+
+		eventStorage.addEvent(Event.builder()
+			.timestamp(Instant.now().toEpochMilli())
+			.userId(userId)
+			.eventType(EventType.REVIEW)
+			.operation(Operation.ADD)
+			.entityId(reviewId)
+			.build());
+
+		createdReview.setContent("Updated content: actually it was brilliant!");
+		reviewStorage.update(createdReview);
+
+		eventStorage.addEvent(Event.builder()
+			.timestamp(Instant.now().toEpochMilli())
+			.userId(userId)
+			.eventType(EventType.REVIEW)
+			.operation(Operation.UPDATE)
+			.entityId(reviewId)
+			.build());
+
+		reviewStorage.delete(reviewId);
+
+		eventStorage.addEvent(Event.builder()
+			.timestamp(Instant.now().toEpochMilli())
+			.userId(userId)
+			.eventType(EventType.REVIEW)
+			.operation(Operation.REMOVE)
+			.entityId(reviewId)
+			.build());
+
+		Collection<Event> feed = eventStorage.getFeedByUserId(userId);
+
+		assertThat(feed)
+			.isNotNull()
+			.hasSize(3);
+
+		Event firstEvent = feed.stream().findFirst().orElseThrow();
+		assertThat(firstEvent.getEventType()).isEqualTo(EventType.REVIEW);
+		assertThat(firstEvent.getOperation()).isEqualTo(Operation.ADD);
+		assertThat(firstEvent.getEntityId()).isEqualTo(reviewId);
+
+		Event secondEvent = feed.stream().skip(1).findFirst().orElseThrow();
+		assertThat(secondEvent.getEventType()).isEqualTo(EventType.REVIEW);
+		assertThat(secondEvent.getOperation()).isEqualTo(Operation.UPDATE);
+		assertThat(secondEvent.getEntityId()).isEqualTo(reviewId);
+
+		Event thirdEvent = feed.stream().skip(2).findFirst().orElseThrow();
+		assertThat(thirdEvent.getEventType()).isEqualTo(EventType.REVIEW);
+		assertThat(thirdEvent.getOperation()).isEqualTo(Operation.REMOVE);
+		assertThat(thirdEvent.getEntityId()).isEqualTo(reviewId);
 	}
 
 	private User makeValidUser() {
@@ -875,5 +1009,14 @@ class FilmorateApplicationTests {
 		}
 
 		return genres;
+	}
+
+	private Review makeValidReview(Long userId, Long filmId) {
+		Review review = new Review();
+		review.setContent("Very cool film, loved it!");
+		review.setIsPositive(true);
+		review.setUserId(userId);
+		review.setFilmId(filmId);
+		return review;
 	}
 }
