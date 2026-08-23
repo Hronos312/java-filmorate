@@ -782,7 +782,11 @@ class FilmorateApplicationTests {
 			.entityId(99L)
 			.build();
 
-		try { Thread.sleep(10); } catch (InterruptedException ignored) {}
+		try {
+			Thread.sleep(10);
+		} catch (InterruptedException ignored) {
+			// Пауза для корректной сортировки timestamp
+		}
 
 		long timestamp2 = Instant.now().toEpochMilli();
 		Event likeEvent = Event.builder()
