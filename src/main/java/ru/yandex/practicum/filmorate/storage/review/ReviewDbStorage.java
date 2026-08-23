@@ -193,7 +193,7 @@ public class ReviewDbStorage implements ReviewStorage {
 
     private Boolean getUserReaction(Long reviewId, Long userId) {
         return jdbc.query(CHECK_USER_REACTION_QUERY,
-                        (rs, rowNum) -> rs.getBoolean("is_like"), reviewId, userId)
+                        (rs, rowNum) -> rs.getObject("is_like", Boolean.class), reviewId, userId)
                 .stream().findFirst().orElse(null);
     }
 

@@ -76,7 +76,7 @@ public class ReviewService {
             .entityId(createdReview.getId())
             .build());
 
-        return reviewStorage.create(review);
+        return createdReview;
     }
 
     public Review update(Review review) {
@@ -96,7 +96,7 @@ public class ReviewService {
             .entityId(updatedReview.getId())
             .build());
 
-        return reviewStorage.update(review);
+        return updatedReview;
     }
 
     public void delete(Long id) {
@@ -123,7 +123,6 @@ public class ReviewService {
             throw new ValidationException("ID отзыва и пользователя не могут быть null");
         }
         log.debug("Добавление лайка к отзыву с id={} от пользователя id={}", reviewId, userId);
-        reviewStorage.findById(reviewId);
         userStorage.findById(userId);
         reviewStorage.addLike(reviewId, userId);
     }
@@ -133,7 +132,6 @@ public class ReviewService {
             throw new ValidationException("ID отзыва и пользователя не могут быть null");
         }
         log.debug("Удаление лайка с отзыва с id={} от пользователя id={}", reviewId, userId);
-        reviewStorage.findById(reviewId);
         userStorage.findById(userId);
         reviewStorage.removeLike(reviewId, userId);
     }
@@ -143,7 +141,6 @@ public class ReviewService {
             throw new ValidationException("ID отзыва и пользователя не могут быть null");
         }
         log.debug("Добавление дизлайка к отзыву с id={} от пользователя id={}", reviewId, userId);
-        reviewStorage.findById(reviewId);
         userStorage.findById(userId);
         reviewStorage.addDislike(reviewId, userId);
     }
@@ -153,7 +150,6 @@ public class ReviewService {
             throw new ValidationException("ID отзыва и пользователя не могут быть null");
         }
         log.debug("Удаление дизлайка с отзыва с id={} от пользователя id={}", reviewId, userId);
-        reviewStorage.findById(reviewId);
         userStorage.findById(userId);
         reviewStorage.removeDislike(reviewId, userId);
     }
