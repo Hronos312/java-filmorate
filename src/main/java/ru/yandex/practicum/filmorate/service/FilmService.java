@@ -11,7 +11,9 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -119,6 +121,27 @@ public class FilmService {
             log.warn("Ошибка валидации фильма: некорректная дата релиза {}", film.getReleaseDate());
             throw new ValidationException("Дата релиза должна быть не ранее 28.12.1895");
         }
+    }
+
+    public Collection<Film> search(String query, String by) {
+        if (query == null || query.isBlank()) {
+            throw new ValidationException("Параметр query не может быть пустым");
+        }
+
+        if (by == null || by.isBlank()) {
+            throw new ValidationException("Параметр by не может быть пустым");
+        }
+
+        List<String> searchBy = Arrays.stream(by.split(","))
+                .map(String::toLowerCase)
+                .toList();
+
+        for (String param : searchBy) {
+            if (!"director".equals(param) && !"title".equals(param)) {
+                throw new ValidationException("Параметр by не может содержать только значения: director, title");
+            }
+        }
+        return filmStorage.search(query, searchBy);
     }
 
 }
