@@ -268,29 +268,29 @@ public class FilmDbStorage implements FilmStorage {
             """;
 
     private static final String SEARCH_FILMS_QUERY = """
-        SELECT DISTINCT f.film_id,
-        f.name,
-        f.description,
-        f.release_date,
-        f.duration,
-        m.mpa_id,
-        m.name AS mpa_name,
-        COUNT(DISTINCT fl.user_id) AS likes_count
-        FROM films AS f
-        JOIN mpa AS m ON m.mpa_id = f.mpa_id
-        LEFT JOIN film_likes AS fl ON fl.film_id = f.film_id
-        LEFT JOIN film_directors AS fd ON fd.film_id = f.film_id
-        LEFT JOIN directors AS d ON d.director_id = fd.director_id
-        WHERE (%s)
-        GROUP BY f.film_id,
-        f.name,
-        f.description,
-        f.release_date,
-        f.duration,
-        m.mpa_id,
-        m.name
-        ORDER BY likes_count DESC, f.film_id
-        """;
+            SELECT DISTINCT f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            m.mpa_id,
+            m.name AS mpa_name,
+            COUNT(DISTINCT fl.user_id) AS likes_count
+            FROM films AS f
+            JOIN mpa AS m ON m.mpa_id = f.mpa_id
+            LEFT JOIN film_likes AS fl ON fl.film_id = f.film_id
+            LEFT JOIN film_directors AS fd ON fd.film_id = f.film_id
+            LEFT JOIN directors AS d ON d.director_id = fd.director_id
+            WHERE (%s)
+            GROUP BY f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            m.mpa_id,
+            m.name
+            ORDER BY likes_count DESC, f.film_id
+            """;
 
     private final JdbcTemplate jdbc;
 
@@ -461,20 +461,12 @@ public class FilmDbStorage implements FilmStorage {
         return films;
     }
 
+
     @Override
     public List<Film> findCommonFilms(Long userId, Long friendId) {
-
         List<Film> films = jdbc.query(FIND_COMMON_FILMS_QUERY, this::mapRow, userId, friendId);
 
-        for (Film film : films) {
-            Set<Long> likes = new HashSet<>(jdbc.query(
-                    "SELECT user_id FROM film_likes WHERE film_id = ?",
-                    (rs, rowNum) -> rs.getLong("user_id"),
-                    film.getId()
-            ));
-            film.getLikes().clear();
-            film.getLikes().addAll(likes);
-        }
+        loadRelations(films);
 
         return films;
     }
