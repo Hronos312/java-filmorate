@@ -163,13 +163,26 @@ public class FilmDbStorage implements FilmStorage {
             """;
 
     private static final String FIND_COMMON_FILMS_QUERY = """
-            SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_id, m.name AS mpa_name
-            FROM films f
-            JOIN mpa m ON f.mpa_id = m.mpa_id
-            JOIN film_likes fl1 ON f.film_id = fl1.film_id AND fl1.user_id = ?
-            JOIN film_likes fl2 ON f.film_id = fl2.film_id AND fl2.user_id = ?
-            GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_id, m.name
-            ORDER BY COUNT(f.film_id) DESC
+            SELECT f.film_id,
+                   f.name,
+                   f.description,
+                   f.release_date,
+                   f.duration,
+                   m.mpa_id,
+                   m.name AS mpa_name
+            FROM films AS f
+            JOIN mpa AS m ON m.mpa_id = f.mpa_id
+            JOIN film_likes AS fl1 ON f.film_id = fl1.film_id AND fl1.user_id = ?
+            JOIN film_likes AS fl2 ON f.film_id = fl2.film_id AND fl2.user_id = ?
+            LEFT JOIN film_likes AS fl_all ON f.film_id = fl_all.film_id
+            GROUP BY f.film_id,
+                     f.name,
+                     f.description,
+                     f.release_date,
+                     f.duration,
+                     m.mpa_id,
+                     m.name
+            ORDER BY COUNT(DISTINCT fl_all.user_id) DESC
             """;
 
     private static final String INSERT_DIRECTOR_QUERY = """
