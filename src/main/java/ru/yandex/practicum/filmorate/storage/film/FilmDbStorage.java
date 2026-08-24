@@ -162,6 +162,16 @@ public class FilmDbStorage implements FilmStorage {
             ORDER BY film_id, user_id
             """;
 
+    private static final String FIND_COMMON_FILMS_QUERY = """
+            SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_id, m.name AS mpa_name
+            FROM films f
+            JOIN mpa m ON f.mpa_id = m.mpa_id
+            JOIN film_likes fl1 ON f.film_id = fl1.film_id AND fl1.user_id = ?
+            JOIN film_likes fl2 ON f.film_id = fl2.film_id AND fl2.user_id = ?
+            GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_id, m.name
+            ORDER BY COUNT(f.film_id) DESC
+            """;
+
     private static final String INSERT_DIRECTOR_QUERY = """
             INSERT INTO film_directors (film_id, director_id)
             VALUES (?, ?)
@@ -447,6 +457,24 @@ public class FilmDbStorage implements FilmStorage {
         );
 
         loadRelations(films);
+
+        return films;
+    }
+
+    @Override
+    public List<Film> findCommonFilms(Long userId, Long friendId) {
+
+        List<Film> films = jdbc.query(FIND_COMMON_FILMS_QUERY, this::mapRow, userId, friendId);
+
+        for (Film film : films) {
+            Set<Long> likes = new HashSet<>(jdbc.query(
+                    "SELECT user_id FROM film_likes WHERE film_id = ?",
+                    (rs, rowNum) -> rs.getLong("user_id"),
+                    film.getId()
+            ));
+            film.getLikes().clear();
+            film.getLikes().addAll(likes);
+        }
 
         return films;
     }

@@ -28,4 +28,6 @@ public interface FilmStorage {
     Collection<Film> getRecommendations(Long userId);
 
     Collection<Film> search(String query, List<String> by);
+
+    List<Film> findCommonFilms(Long userId, Long friendId);
 }
