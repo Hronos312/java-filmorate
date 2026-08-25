@@ -140,6 +140,16 @@ public class FilmService {
         log.info("Фильм с id {} удалён", id);
     }
 
+    public List<Film> findCommonFilms(Long userId, Long friendId) {
+        if (userId == null || friendId == null) {
+            throw new ValidationException("userId и friendId должны быть указаны");
+        }
+        userStorage.findById(userId);
+        userStorage.findById(friendId);
+
+        return filmStorage.findCommonFilms(userId, friendId);
+    }
+
     private void validateReleaseDate(Film film) {
         if (film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
             log.warn("Ошибка валидации фильма: некорректная дата релиза {}", film.getReleaseDate());

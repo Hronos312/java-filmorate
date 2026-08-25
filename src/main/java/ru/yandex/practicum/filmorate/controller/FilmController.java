@@ -14,6 +14,8 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 
 import java.util.Collection;
+import java.util.List;
+
 
 @RestController
 @RequestMapping("/films")
@@ -78,5 +80,11 @@ public class FilmController {
         return filmService.search(query, by);
     }
 
+
+    @GetMapping("/common")
+    public List<Film> findCommonFilms(@RequestParam Long userId,
+                                      @RequestParam Long friendId) {
+        return filmService.findCommonFilms(userId, friendId);
+    }
 
 }

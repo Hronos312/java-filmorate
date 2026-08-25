@@ -162,6 +162,29 @@ public class FilmDbStorage implements FilmStorage {
             ORDER BY film_id, user_id
             """;
 
+    private static final String FIND_COMMON_FILMS_QUERY = """
+            SELECT f.film_id,
+                   f.name,
+                   f.description,
+                   f.release_date,
+                   f.duration,
+                   m.mpa_id,
+                   m.name AS mpa_name
+            FROM films AS f
+            JOIN mpa AS m ON m.mpa_id = f.mpa_id
+            JOIN film_likes AS fl1 ON f.film_id = fl1.film_id AND fl1.user_id = ?
+            JOIN film_likes AS fl2 ON f.film_id = fl2.film_id AND fl2.user_id = ?
+            LEFT JOIN film_likes AS fl_all ON f.film_id = fl_all.film_id
+            GROUP BY f.film_id,
+                     f.name,
+                     f.description,
+                     f.release_date,
+                     f.duration,
+                     m.mpa_id,
+                     m.name
+            ORDER BY COUNT(DISTINCT fl_all.user_id) DESC
+            """;
+
     private static final String INSERT_DIRECTOR_QUERY = """
             INSERT INTO film_directors (film_id, director_id)
             VALUES (?, ?)
@@ -258,29 +281,29 @@ public class FilmDbStorage implements FilmStorage {
             """;
 
     private static final String SEARCH_FILMS_QUERY = """
-        SELECT DISTINCT f.film_id,
-        f.name,
-        f.description,
-        f.release_date,
-        f.duration,
-        m.mpa_id,
-        m.name AS mpa_name,
-        COUNT(DISTINCT fl.user_id) AS likes_count
-        FROM films AS f
-        JOIN mpa AS m ON m.mpa_id = f.mpa_id
-        LEFT JOIN film_likes AS fl ON fl.film_id = f.film_id
-        LEFT JOIN film_directors AS fd ON fd.film_id = f.film_id
-        LEFT JOIN directors AS d ON d.director_id = fd.director_id
-        WHERE (%s)
-        GROUP BY f.film_id,
-        f.name,
-        f.description,
-        f.release_date,
-        f.duration,
-        m.mpa_id,
-        m.name
-        ORDER BY likes_count DESC, f.film_id
-        """;
+            SELECT DISTINCT f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            m.mpa_id,
+            m.name AS mpa_name,
+            COUNT(DISTINCT fl.user_id) AS likes_count
+            FROM films AS f
+            JOIN mpa AS m ON m.mpa_id = f.mpa_id
+            LEFT JOIN film_likes AS fl ON fl.film_id = f.film_id
+            LEFT JOIN film_directors AS fd ON fd.film_id = f.film_id
+            LEFT JOIN directors AS d ON d.director_id = fd.director_id
+            WHERE (%s)
+            GROUP BY f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            m.mpa_id,
+            m.name
+            ORDER BY likes_count DESC, f.film_id
+            """;
 
     private final JdbcTemplate jdbc;
 
@@ -445,6 +468,16 @@ public class FilmDbStorage implements FilmStorage {
                 this::mapRow,
                 params.toArray()
         );
+
+        loadRelations(films);
+
+        return films;
+    }
+
+
+    @Override
+    public List<Film> findCommonFilms(Long userId, Long friendId) {
+        List<Film> films = jdbc.query(FIND_COMMON_FILMS_QUERY, this::mapRow, userId, friendId);
 
         loadRelations(films);
 

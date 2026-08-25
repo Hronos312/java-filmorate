@@ -83,6 +83,23 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public List<Film> findCommonFilms(Long userId, Long friendId) {
+        Set<Film> userFilms = films.values().stream()
+                .filter(film -> film.getLikes().contains(userId))
+                .collect(Collectors.toSet());
+
+        Set<Film> friendFilms = films.values().stream()
+                .filter(film -> film.getLikes().contains(friendId))
+                .collect(Collectors.toSet());
+
+        userFilms.retainAll(friendFilms);
+
+        return userFilms.stream()
+                .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
+                .toList();
+    }
+
+    @Override
     public Collection<Film> findByDirector(Long directorId, String sortBy) {
         Comparator<Film> comparator;
 
