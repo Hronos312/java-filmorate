@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.EventType;
@@ -72,6 +73,7 @@ public class FilmService {
         return updatedFilm;
     }
 
+    @Transactional
     public void addLike(Long filmId, Long userId) {
         filmStorage.findById(filmId);
         userStorage.findById(userId);
@@ -89,6 +91,7 @@ public class FilmService {
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
+    @Transactional
     public void removeLike(Long filmId, Long userId) {
         filmStorage.findById(filmId);
         userStorage.findById(userId);

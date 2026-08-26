@@ -257,27 +257,30 @@ public class FilmDbStorage implements FilmStorage {
             """;
 
     private static final String FIND_RECOMMENDATION_FILMS_BY_USER = """
-                SELECT f.*, m.name AS mpa_name
-                FROM films f
-                JOIN mpa AS m ON f.mpa_id = m.mpa_id
-                WHERE f.film_id IN (
-                    SELECT fl_similar.film_id
-                    FROM film_likes AS fl_similar
-                    WHERE fl_similar.user_id = (
-                        SELECT fl2.user_id
-                        FROM film_likes AS fl1
-                        JOIN film_likes AS fl2 ON fl1.film_id = fl2.film_id AND fl1.user_id <> fl2.user_id
-                        WHERE fl1.user_id = ?
-                        GROUP BY fl2.user_id
-                        ORDER BY COUNT(fl2.film_id) DESC
-                        LIMIT 1
+                WITH most_similar_user AS (
+                    SELECT fl2.user_id
+                    FROM film_likes AS fl1
+                    JOIN film_likes AS fl2
+                        ON fl1.film_id = fl2.film_id
+                        AND fl1.user_id <> fl2.user_id
+                    WHERE fl1.user_id = ?
+                    GROUP BY fl2.user_id
+                    ORDER BY COUNT(*) DESC, fl2.user_id ASC
+                    LIMIT 1
                     )
-                    AND fl_similar.film_id NOT IN (
-                        SELECT fl_target.film_id
-                        FROM film_likes AS fl_target
-                        WHERE fl_target.user_id = ?
-                    )
-                );
+                SELECT f.*,
+                       m.name AS mpa_name
+                FROM films AS f
+                JOIN mpa AS m
+                    ON f.mpa_id = m.mpa_id
+                JOIN film_likes AS fl_similar
+                    ON f.film_id = fl_similar.film_id
+                JOIN most_similar_user AS msu
+                    ON fl_similar.user_id = msu.user_id
+                LEFT JOIN film_likes AS fl_target
+                    ON f.film_id = fl_target.film_id
+                    AND fl_target.user_id = ?
+                WHERE fl_target.film_id IS NULL
             """;
 
     private static final String SEARCH_FILMS_QUERY = """

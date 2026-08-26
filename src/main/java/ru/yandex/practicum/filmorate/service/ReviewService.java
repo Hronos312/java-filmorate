@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.EventType;
@@ -61,6 +62,7 @@ public class ReviewService {
         return reviewStorage.findByFilmId(filmId, count);
     }
 
+    @Transactional
     public Review create(Review review) {
         log.debug("Создание отзыва: {}", review);
         validateReview(review);
@@ -79,13 +81,18 @@ public class ReviewService {
         return createdReview;
     }
 
+    @Transactional
     public Review update(Review review) {
         log.debug("Обновление отзыва с id={}: {}", review.getId(), review);
         if (review.getId() == null) {
             throw new ValidationException("ID отзыва должен быть указан");
         }
+
         reviewStorage.findById(review.getId());
         validateReview(review);
+
+        filmStorage.findById(review.getFilmId());
+        userStorage.findById(review.getUserId());
 
         Review updatedReview = reviewStorage.update(review);
         eventStorage.addEvent(Event.builder()
@@ -99,6 +106,7 @@ public class ReviewService {
         return updatedReview;
     }
 
+    @Transactional
     public void delete(Long id) {
         if (id == null) {
             throw new ValidationException("ID отзыва не может быть null");

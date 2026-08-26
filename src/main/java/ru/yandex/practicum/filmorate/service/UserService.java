@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.EventType;
@@ -60,6 +61,7 @@ public class UserService {
         return updatedUser;
     }
 
+    @Transactional
     public void addFriend(Long userId, Long friendId) {
         if (userId.equals(friendId)) {
             throw new ValidationException("Пользователь не может добавить себя в друзья");
@@ -81,6 +83,7 @@ public class UserService {
         log.info("Пользователь {} добавил пользователя {} в друзья", userId, friendId);
     }
 
+    @Transactional
     public void removeFriend(Long userId, Long friendId) {
         userStorage.findById(userId);
         userStorage.findById(friendId);
