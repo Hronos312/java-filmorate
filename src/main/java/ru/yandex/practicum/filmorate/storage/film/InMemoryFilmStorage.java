@@ -5,10 +5,8 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class InMemoryFilmStorage implements FilmStorage {
@@ -73,11 +71,112 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public Collection<Film> findPopular(Integer count) {
+    public Collection<Film> findPopular(Integer count, Long genreId, Integer year) {
         return films.values()
                 .stream()
+                .filter(film -> genreId == null || film.getGenres().stream()
+                        .anyMatch(genre -> genreId.equals(genre.getId())))
+                .filter(film -> year == null || year.equals(film.getReleaseDate().getYear()))
                 .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
                 .limit(count)
+                .toList();
+    }
+
+    @Override
+    public List<Film> findCommonFilms(Long userId, Long friendId) {
+        Set<Film> userFilms = films.values().stream()
+                .filter(film -> film.getLikes().contains(userId))
+                .collect(Collectors.toSet());
+
+        Set<Film> friendFilms = films.values().stream()
+                .filter(film -> film.getLikes().contains(friendId))
+                .collect(Collectors.toSet());
+
+        userFilms.retainAll(friendFilms);
+
+        return userFilms.stream()
+                .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
+                .toList();
+    }
+
+    @Override
+    public Collection<Film> findByDirector(Long directorId, String sortBy) {
+        Comparator<Film> comparator;
+
+        if ("year".equalsIgnoreCase(sortBy)) {
+            comparator = Comparator.comparing(Film::getReleaseDate);
+        } else if ("likes".equalsIgnoreCase(sortBy)) {
+            comparator = Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed();
+        } else {
+            throw new ValidationException("Параметр sortBy должен иметь значение year или likes");
+        }
+
+        return films.values().stream()
+                .filter(film -> film.getDirectors().stream()
+                        .anyMatch(director -> director.getId().equals(directorId))
+                )
+                .sorted(comparator)
+                .toList();
+    }
+
+    @Override
+    public Collection<Film> getRecommendations(Long userId) {
+        Map<Long, Set<Long>> userLikesMap = new HashMap<>();
+        for (Film film : films.values()) {
+            for (Long uId : film.getLikes()) {
+                userLikesMap.computeIfAbsent(uId, k -> new HashSet<>()).add(film.getId());
+            }
+        }
+
+        Set<Long> targetLikes = userLikesMap.getOrDefault(userId, Collections.emptySet());
+
+        Long mostSimilarUserId = null;
+        long maxIntersection = 0;
+
+        for (Map.Entry<Long, Set<Long>> entry : userLikesMap.entrySet()) {
+            Long otherUserId = entry.getKey();
+            if (otherUserId.equals(userId)) {
+                continue;
+            }
+
+            Set<Long> otherLikes = entry.getValue();
+            long intersectionSize = otherLikes.stream()
+                    .filter(targetLikes::contains)
+                    .count();
+
+            if (intersectionSize > maxIntersection) {
+                maxIntersection = intersectionSize;
+                mostSimilarUserId = otherUserId;
+            }
+        }
+
+        if (mostSimilarUserId == null || maxIntersection == 0) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> recommendedFilmIds = userLikesMap.get(mostSimilarUserId).stream()
+                .filter(filmId -> !targetLikes.contains(filmId))
+                .collect(Collectors.toSet());
+
+        return films.values().stream()
+                .filter(film -> recommendedFilmIds.contains(film.getId()))
+                .toList();
+    }
+
+    @Override
+    public Collection<Film> search(String query, List<String> by) {
+        String lowerQuery = query.toLowerCase();
+
+        return films.values().stream().filter(film -> {
+                    boolean matchTitle = by.contains("title") && film.getName().toLowerCase().contains(lowerQuery);
+
+                    boolean matchDirector = by.contains("director") &&
+                            film.getDirectors().stream().anyMatch(director ->
+                                            director.getName().toLowerCase().contains(lowerQuery));
+
+                    return matchTitle || matchDirector;
+                })
+                .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size()).reversed())
                 .toList();
     }
 
