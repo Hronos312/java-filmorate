@@ -1,82 +1,84 @@
-# java-filmorate
-Template repository for Filmorate project.
+# Filmorate
 
-## Схема базы данных
+Filmorate is a team-developed REST service for working with films and social interactions between users.
 
-![Схема базы данных Filmorate](docs/database_prototype.png)
+The application allows users to:
+- create and manage film profiles;
+- add friends;
+- like films;
+- view popular films;
+- work with genres and MPA ratings;
+- manage directors;
+- create and rate reviews;
+- receive user activity events.
 
-### Описание схемы
+## Tech stack
 
-База данных Filmorate состоит из таблиц для хранения пользователей, фильмов, жанров, рейтингов MPA, лайков и дружбы пользователей.
+- Java
+- Spring Boot
+- Spring Web
+- Spring JDBC
+- H2
+- Maven
+- Lombok
+- JUnit
+- Git / GitHub
 
-Таблица `users` хранит данные пользователей: электронную почту, логин, имя и дату рождения.
+## Architecture
 
-Таблица `films` хранит данные фильмов: название, описание, дату релиза, продолжительность и ссылку на рейтинг MPA.
+The project follows a layered architecture:
 
-Таблица `mpa` является справочником возрастных рейтингов фильма: G, PG, PG-13, R, NC-17.
+Controller → Service → Storage → Database
 
-Таблица `genres` является справочником жанров фильма.
+The database stores users, films, genres, MPA ratings, directors, reviews, likes, friendships and events.
 
-Так как у фильма может быть несколько жанров, связь между фильмами и жанрами вынесена в отдельную таблицу `film_genres`.
+## Database
 
-Лайки пользователей хранятся в таблице `likes`. Составной первичный ключ `(film_id, user_id)` не позволяет одному пользователю поставить лайк одному фильму несколько раз.
+![Database schema](docs/database_prototype.png)
 
-Дружба пользователей хранится в таблице `friendships`. Поле `user_id` обозначает пользователя, который отправил заявку или имеет связь дружбы, поле `friend_id` - второго пользователя, а поле `status_id` указывает на статус дружбы.
+Main relationships:
+- Film ↔ Genre — many-to-many
+- Film ↔ Director — many-to-many
+- User ↔ Film — likes
+- User ↔ User — friendships
 
-Таблица `friendship_statuses` хранит возможные статусы дружбы: неподтверждённая и подтверждённая.
+## My contribution
 
-### Примеры SQL-запросов
+This project was developed as a team project.
 
-#### Получение всех пользователей
+My personal contribution included:
+- database schema design;
+- CRUD operations for directors;
+- film–director relationships;
+- sorting director films by release year and popularity;
+- validation for directors;
+- endpoints for deleting films and users;
+- integration of team changes into the main branch;
+- participation in pull request review and team coordination.
 
-```
-SELECT *
-FROM users;
-````
+## API examples
 
-#### Получение всех фильмов с рейтингом MPA
+Examples of available endpoints:
 
-```
-SELECT f.film_id,
-       f.name,
-       f.description,
-       f.release_date,
-       f.duration,
-       m.name AS mpa
-FROM films AS f
-JOIN mpa AS m ON f.mpa_id = m.mpa_id;
-```
+GET /films
+POST /films
+PUT /films
 
-#### Получение жанров фильма
+GET /users
+POST /users
+PUT /users
 
-```
-SELECT g.genre_id,
-       g.name
-FROM film_genres AS fg
-JOIN genres AS g ON fg.genre_id = g.genre_id
-WHERE fg.film_id = 1;
-```
+GET /directors
+POST /directors
+PUT /directors/{id}
+DELETE /directors/{id}
 
-#### Получение топ-10 популярных фильмов
+## Team development
 
-```
-SELECT f.film_id,
-       f.name,
-       COUNT(l.user_id) AS likes_count
-FROM films AS f
-LEFT JOIN likes AS l ON f.film_id = l.film_id
-GROUP BY f.film_id, f.name
-ORDER BY likes_count DESC
-LIMIT 10;
-```
+Development was organized through feature branches and pull requests.
 
-#### Получение друзей пользователя
-
-```
-SELECT u.*
-FROM friendships AS fr
-JOIN users AS u ON fr.friend_id = u.user_id
-JOIN friendship_statuses AS fs ON fr.status_id = fs.status_id
-WHERE fr.user_id = 1
-  AND fs.name = 'CONFIRMED';
-```
+The project included:
+- task distribution;
+- code review;
+- merge through the develop branch;
+- final integration into main.
